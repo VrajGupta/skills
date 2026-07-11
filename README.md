@@ -2,9 +2,28 @@
 
 My Claude Code skills.
 
+## Installing with `vkg`
+
+```
+npx github:VrajGupta/skills init     # install every skill onto this machine
+npx github:VrajGupta/skills list     # see what's installed / drifted
+npx github:VrajGupta/skills add <skill>       # install one skill + its dependencies
+npx github:VrajGupta/skills update [skill...] # refresh installed skills (skips local edits)
+```
+
+Installs real content into `~/.agents/skills/<name>` and symlinks it into
+`~/.claude/skills/<name>`. If you've hand-edited an installed skill, `update`
+detects the drift and leaves it alone instead of overwriting it — pass
+`--force` to overwrite anyway. See [`docs/spec-vkg-cli.md`](docs/spec-vkg-cli.md)
+for the full design and [`docs/invariants.md`](docs/invariants.md) for the
+guarantees it holds itself to.
+
 ## Layout
 
 ```
+bin/vkg.js       the vkg CLI entrypoint (see "Installing with vkg" above)
+src/             vkg's implementation
+test/            vkg's test suite (node --test)
 part1/           planning chain     (idea -> spec -> tickets -> pushed handoff)
 part2/           implementation     (next ticket -> TDD -> pushed handoff)
 part3/           review/loop-closer (audit -> fix -> grade -> pushed handoff)

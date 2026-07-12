@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-export async function makeTmpDir(prefix = 'vkg-test-') {
+export async function makeTmpDir(prefix = 'vskills-test-') {
   return mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

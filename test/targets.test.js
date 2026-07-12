@@ -20,12 +20,12 @@ test('a custom single target in config overrides the default', async () => {
   const installRoot = await makeTmpDir();
   try {
     await fs.writeFile(
-      path.join(installRoot, '.vkg-config.json'),
-      JSON.stringify({ targets: ['/tmp/custom-vkg-target'] }),
+      path.join(installRoot, '.vskills-config.json'),
+      JSON.stringify({ targets: ['/tmp/custom-vskills-target'] }),
       'utf8'
     );
     const { targets } = await readConfig(installRoot);
-    assert.deepEqual(targets, ['/tmp/custom-vkg-target']);
+    assert.deepEqual(targets, ['/tmp/custom-vskills-target']);
   } finally {
     await cleanup(installRoot);
   }

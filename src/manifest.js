@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export function manifestPath(installRoot) {
-  return path.join(installRoot, '.vkg-manifest.json');
+  return path.join(installRoot, '.vskills-manifest.json');
 }
 
 export async function readManifest(installRoot) {

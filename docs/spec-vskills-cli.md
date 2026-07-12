@@ -1,4 +1,4 @@
-# Spec: `vkg` — skills installer CLI
+# Spec: `vskills` — skills installer CLI
 
 See [`docs/invariants.md`](./invariants.md) for the constraints this spec must
 honor, and [`CONTEXT.md`](../CONTEXT.md) for the vocabulary used below (**install
@@ -15,7 +15,7 @@ agent, or a skill that depends on another skill being present.
 
 ## Solution
 
-A CLI, `vkg`, distributed as `npx github:VrajGupta/skills <command>` (no npm
+A CLI, `vskills`, distributed as `npx github:VrajGupta/skills <command>` (no npm
 publish — see [ADR-0001](./adr/0001-npx-github-distribution.md)), that installs
 and updates skills from this repo into the local **install root**
 (`~/.agents/skills/`) and symlinks them into an **agent target**
@@ -26,27 +26,27 @@ detect **drift** and never silently overwrite a locally modified skill.
 
 1. As a new user, I want to run `npx github:VrajGupta/skills init`, so that every
    skill in the repo gets installed onto my machine in one step.
-2. As a user, I want `vkg init` to skip skills I already have installed and
+2. As a user, I want `vskills init` to skip skills I already have installed and
    unmodified, so that re-running it is safe and fast.
-3. As a user, I want `vkg list` to show me every skill in the repo plus its local
+3. As a user, I want `vskills list` to show me every skill in the repo plus its local
    status (not installed / installed / drifted), so that I know what I have
    without reading the filesystem by hand.
-4. As a user, I want `vkg add <skill>` to install just one skill (plus whatever it
+4. As a user, I want `vskills add <skill>` to install just one skill (plus whatever it
    depends on), so that I don't have to pull the whole library for one thing I
    want.
-5. As a user, I want `vkg add <skill>` to also install any skill named in that
+5. As a user, I want `vskills add <skill>` to also install any skill named in that
    skill's `dependencies` frontmatter, so that I never end up with a skill
    installed that's silently missing something it needs.
-6. As a user, I want `vkg add <skill>` on an already-installed, unmodified skill
+6. As a user, I want `vskills add <skill>` on an already-installed, unmodified skill
    to update it to the latest version, so that `add` doubles as a single-skill
    refresh without a separate command.
 7. As a user who edited an installed skill's `SKILL.md` by hand, I want
-   `vkg update` to leave that skill alone and tell me it's drifted, so that my
+   `vskills update` to leave that skill alone and tell me it's drifted, so that my
    edits are never silently overwritten.
-8. As a user, I want `vkg update --force <skill>` to overwrite a drifted skill
+8. As a user, I want `vskills update --force <skill>` to overwrite a drifted skill
    with the upstream version when I explicitly ask for it, so that I have an
    escape hatch when I want to discard my local edit.
-9. As a user, I want `vkg update` with no arguments to update every installed,
+9. As a user, I want `vskills update` with no arguments to update every installed,
    undrifted skill in one pass, so that keeping my whole library current is a
    single command.
 10. As a user, I want a clear error (not a silent no-op) when the repo can't be
@@ -55,12 +55,12 @@ detect **drift** and never silently overwrite a locally modified skill.
 11. As a user, I want a skill with a malformed `SKILL.md` to be skipped with a
     named warning rather than crashing the whole `init`/`update`/`add` run, so
     that one bad skill doesn't block installing every other skill.
-12. As a user, I want `vkg` to refuse to touch a file at the agent-target path
-    that isn't a symlink `vkg` created, so that it never clobbers something I put
+12. As a user, I want `vskills` to refuse to touch a file at the agent-target path
+    that isn't a symlink `vskills` created, so that it never clobbers something I put
     there myself.
 13. As a user, I want skill folders nested under `mattpocock/<category>/<name>`
     to be addressable by their plain `<name>` (not the full nested path), so that
-    `vkg add scaffold-exercises` works the same regardless of where in the repo
+    `vskills add scaffold-exercises` works the same regardless of where in the repo
     the skill physically lives.
 14. As a future user of a second coding agent, I want the agent-target directory
     to be configurable, so that adding Codex or another agent later doesn't
@@ -82,7 +82,7 @@ detect **drift** and never silently overwrite a locally modified skill.
   Configurable (story 14) via a `targets` list in the CLI's own config so a
   second agent target can be added without code changes, though only one target
   ships populated in v1.
-- Manifest: `~/.agents/skills/.vkg-manifest.json`, one entry per installed skill:
+- Manifest: `~/.agents/skills/.vskills-manifest.json`, one entry per installed skill:
   `{ name, sourcePath, contentHash, installedAt }`. Written/updated after every
   successful install; read (never written) by `list`/`update`'s drift check.
 - Dependency closure: `dependencies: [name, ...]` field in SKILL.md frontmatter,

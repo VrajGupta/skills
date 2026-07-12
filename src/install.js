@@ -37,7 +37,7 @@ async function ensureSymlink(installedDir, targetDir, name, warnings) {
   }
 
   if (!existing.isSymbolicLink()) {
-    warnings.push(`${linkPath}: exists and is not a symlink vkg created — left untouched`);
+    warnings.push(`${linkPath}: exists and is not a symlink vskills created — left untouched`);
     return;
   }
 

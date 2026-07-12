@@ -12,7 +12,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
 
   for (const name of targetNames) {
     if (!manifest.skills[name]) {
-      messages.push(`${name}: not currently installed — use "vkg add ${name}" instead`);
+      messages.push(`${name}: not currently installed — use "vskills add ${name}" instead`);
       continue;
     }
     const skill = skills.get(name);

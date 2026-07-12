@@ -7,7 +7,7 @@ export function defaultTargets() {
 }
 
 export function configPath(installRoot) {
-  return path.join(installRoot, '.vkg-config.json');
+  return path.join(installRoot, '.vskills-config.json');
 }
 
 export async function readConfig(installRoot) {

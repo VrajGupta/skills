@@ -14,14 +14,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const installRoot = path.join(os.homedir(), '.agents', 'skills');
 
-const HELP = `vkg — installer CLI for VrajGupta/skills
+const HELP = `V's Skills (vskills) — installer CLI for VrajGupta/skills
 
 Usage:
-  vkg init                    Install every skill in the repo
-  vkg add <skill...>          Install a skill plus its dependencies (or refresh it)
-  vkg update [skill...]       Update installed skills (all, or just the named ones)
-  vkg update --force <skill>  Overwrite a locally-modified (drifted) skill
-  vkg list                    Show every skill and its local install status
+  vskills init                    Install every skill in the repo
+  vskills add <skill...>          Install a skill plus its dependencies (or refresh it)
+  vskills update [skill...]       Update installed skills (all, or just the named ones)
+  vskills update --force <skill>  Overwrite a locally-modified (drifted) skill
+  vskills list                    Show every skill and its local install status
 
 Options:
   -h, --help     Show this help
@@ -74,7 +74,7 @@ export async function main(argv) {
   if (command === 'add') {
     const names = rest.filter((a) => a !== '--force');
     if (names.length === 0) {
-      console.error('vkg add requires at least one skill name');
+      console.error('vskills add requires at least one skill name');
       return 1;
     }
     const result = await runAdd({ names, repoRoot, installRoot, targets });
@@ -91,11 +91,9 @@ export async function main(argv) {
   }
 }
 
-if (path.resolve(process.argv[1] ?? '') === path.resolve(fileURLToPath(import.meta.url))) {
-  main(process.argv.slice(2))
-    .then((code) => process.exit(code))
-    .catch((err) => {
-      console.error(err.stack || String(err));
-      process.exit(1);
-    });
-}
+main(process.argv.slice(2))
+  .then((code) => process.exit(code))
+  .catch((err) => {
+    console.error(err.stack || String(err));
+    process.exit(1);
+  });

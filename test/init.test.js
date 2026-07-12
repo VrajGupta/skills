@@ -8,9 +8,9 @@ import { readManifest } from '../src/manifest.js';
 import { makeTmpDir, writeSkill, cleanup } from './helpers.js';
 
 async function setup() {
-  const repo = await makeTmpDir('vkg-repo-');
-  const installRoot = await makeTmpDir('vkg-install-');
-  const target = await makeTmpDir('vkg-target-');
+  const repo = await makeTmpDir('vskills-repo-');
+  const installRoot = await makeTmpDir('vskills-install-');
+  const target = await makeTmpDir('vskills-target-');
   await writeSkill(repo, 'alpha', { name: 'alpha', description: 'Alpha.' });
   return { repo, installRoot, target };
 }

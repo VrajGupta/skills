@@ -1,6 +1,6 @@
 # Distribute via `npx github:` instead of publishing to npm
 
-We ship `vkg` as `npx github:VrajGupta/skills <command>` rather than publishing a
+We ship `vskills` as `npx github:VrajGupta/skills <command>` rather than publishing a
 package to the npm registry. This is a personal/small-audience tool — an npm
 publish adds registry account management, version-bump ceremony, and a second
 place (npm) that can drift from the source of truth (GitHub) for no real benefit

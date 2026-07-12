@@ -9,6 +9,7 @@ import { runUpdate } from '../src/commands/update.js';
 import { runList } from '../src/commands/list.js';
 import { runAdd } from '../src/commands/add.js';
 import { readConfig } from '../src/config.js';
+import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -33,10 +34,15 @@ async function version() {
   return pkg.version;
 }
 
-function report(label, { results = [], messages = [] }) {
-  console.log(label);
-  for (const r of results) console.log(`  ${r.status.padEnd(11)} ${r.name}`);
-  for (const m of messages) console.error(`  ! ${m}`);
+function report(title, { results = [], messages = [] }) {
+  console.log(banner(title));
+  for (const r of results) console.log(installLine(r.status, r.name));
+  if (results.length > 0) {
+    console.log(color.dim('  ' + '─'.repeat(30)));
+    console.log(`  ${summarize(results)}`);
+  }
+  for (const m of messages) console.error(warningLine(m));
+  console.log();
 }
 
 export async function main(argv) {
@@ -60,14 +66,18 @@ export async function main(argv) {
   const { targets } = await readConfig(installRoot);
 
   if (command === 'init') {
-    report('init:', await runInit({ repoRoot, installRoot, targets }));
+    report("V's Skills — installing", await runInit({ repoRoot, installRoot, targets }));
     return 0;
   }
 
   if (command === 'list') {
     const { rows, warnings } = await runList({ repoRoot, installRoot });
-    for (const row of rows) console.log(`${row.status.padEnd(13)} ${row.name} — ${row.description}`);
-    for (const w of warnings) console.error(`  ! ${w}`);
+    console.log(banner("V's Skills — status"));
+    for (const row of rows) console.log(listLine(row.status, row.name, row.description));
+    console.log(color.dim('  ' + '─'.repeat(30)));
+    console.log(`  ${summarize(rows)}`);
+    for (const w of warnings) console.error(warningLine(w));
+    console.log();
     return 0;
   }
 
@@ -78,7 +88,7 @@ export async function main(argv) {
       return 1;
     }
     const result = await runAdd({ names, repoRoot, installRoot, targets });
-    report('add:', result);
+    report("V's Skills — add", result);
     return result.ok ? 0 : 1;
   }
 
@@ -86,7 +96,7 @@ export async function main(argv) {
     const force = rest.includes('--force');
     const names = rest.filter((a) => a !== '--force');
     const result = await runUpdate({ names, repoRoot, installRoot, targets, force });
-    report('update:', result);
+    report("V's Skills — update", result);
     return 0;
   }
 }

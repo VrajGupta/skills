@@ -1,0 +1,16 @@
+{
+  "name": "vkg-skills",
+  "version": "0.1.0",
+  "description": "Installer CLI for VrajGupta/skills — init/update/list/add skills into a local install root and symlink them into coding-agent skill directories.",
+  "type": "module",
+  "bin": {
+    "vkg": "bin/vkg.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

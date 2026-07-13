@@ -1,20 +1,138 @@
-import { discoverSkills } from '../discovery.js';
-import { installOne } from '../install.js';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { discoverSkills, isDirectory } from '../discovery.js';
+import { adoptOne, installOne } from '../install.js';
+import { hashDir } from '../hash.js';
+import { parseFrontmatter } from '../frontmatter.js';
+import { compareVersions } from '../version.js';
 import { readManifest, writeManifest } from '../manifest.js';
 
-export async function runInit({ repoRoot, installRoot, targets }) {
+async function readInstalledVersion(installedDir) {
+  try {
+    const raw = await readFile(path.join(installedDir, 'SKILL.md'), 'utf8');
+    const version = parseFrontmatter(raw).data.version;
+    return typeof version === 'string' && version.length > 0 ? version : null;
+  } catch {
+    return null;
+  }
+}
+
+// Init runs in three phases so a machine that already has skills (from an
+// earlier run, or from someone else's installer dropping folders into the
+// same install root) gets a plan instead of a wall of "drifted":
+//   1. classify every skill: install / up-to-date / adopt / update / conflict
+//   2. hand conflicts to `resolveConflicts` (interactive prompt in the CLI);
+//      it returns the names to overwrite. Without a resolver, every conflict
+//      is overwritten — but installOne always backs up unmanaged content.
+//   3. apply
+export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null }) {
   const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
+
+  const plan = [];
+  for (const skill of skills.values()) {
+    const installedDir = path.join(installRoot, skill.name);
+    if (!(await isDirectory(installedDir))) {
+      plan.push({ skill, action: 'install' });
+      continue;
+    }
+
+    const installedHash = await hashDir(installedDir);
+    const sourceHash = await hashDir(skill.dir);
+    const entry = manifest.skills[skill.name];
+
+    if (installedHash === sourceHash) {
+      // Byte-identical to the repo. If we don't have a manifest record yet
+      // (pre-existing copy from before vskills, or another installer),
+      // adopting it silently is always safe — same content, now managed.
+      plan.push({
+        skill,
+        action: entry?.contentHash === installedHash ? 'up-to-date' : 'adopt',
+        installedHash,
+      });
+      continue;
+    }
+
+    if (entry && entry.contentHash === installedHash) {
+      // Managed, unmodified by the user — the repo just moved on. Update.
+      plan.push({ skill, action: 'update' });
+      continue;
+    }
+
+    // Content differs and vskills doesn't own it (unmanaged, or locally
+    // modified). Frontmatter versions are the only honest tiebreaker: a
+    // strictly older installed version is an outdated copy of ours — update
+    // it. Anything else (no version, equal, newer, unparseable) is a
+    // conflict for the resolver.
+    const installedVersion = await readInstalledVersion(installedDir);
+    const repoVersion = skill.version ?? null;
+    if (installedVersion && repoVersion && compareVersions(repoVersion, installedVersion) === 1) {
+      plan.push({ skill, action: 'update', note: `v${installedVersion} → v${repoVersion}` });
+      continue;
+    }
+    plan.push({ skill, action: 'conflict', installedVersion, repoVersion });
+  }
+
+  const conflicts = plan.filter((p) => p.action === 'conflict');
+  let overwriteNames = new Set(conflicts.map((c) => c.skill.name));
+  if (conflicts.length > 0 && resolveConflicts) {
+    const chosen = await resolveConflicts(
+      conflicts.map((c) => ({
+        name: c.skill.name,
+        installedVersion: c.installedVersion,
+        repoVersion: c.repoVersion,
+      }))
+    );
+    overwriteNames = new Set(chosen);
+  }
 
   const results = [];
   const messages = [...discoveryWarnings];
 
-  for (const skill of skills.values()) {
-    const { status, warnings } = await installOne({ skill, installRoot, targets, manifest });
-    results.push({ name: skill.name, status });
-    messages.push(...warnings.map((w) => `${skill.name}: ${w}`));
-    if (status === 'drifted') {
-      messages.push(`${skill.name}: locally modified or unmanaged — left untouched`);
+  for (const item of plan) {
+    const { skill, action } = item;
+    const record = (status, warnings = []) => {
+      results.push({ name: skill.name, status });
+      messages.push(...warnings.map((w) => `${skill.name}: ${w}`));
+    };
+
+    if (action === 'up-to-date') {
+      // Already managed and byte-identical: installOne's up-to-date path
+      // ensures symlinks without rewriting the manifest entry, so a re-run
+      // is a true no-op (installedAt stays put).
+      const { warnings } = await installOne({ skill, installRoot, targets, manifest });
+      record('up-to-date', warnings);
+      continue;
+    }
+
+    if (action === 'adopt') {
+      const { warnings } = await adoptOne({
+        skill, installRoot, targets, manifest, contentHash: item.installedHash,
+      });
+      record('adopted', warnings);
+      continue;
+    }
+
+    if (action === 'install') {
+      const { warnings } = await installOne({ skill, installRoot, targets, manifest });
+      record('installed', warnings);
+      continue;
+    }
+
+    if (action === 'update') {
+      const { warnings } = await installOne({ skill, installRoot, targets, manifest, force: true });
+      record('updated', warnings);
+      if (item.note) messages.push(`${skill.name}: ${item.note}`);
+      continue;
+    }
+
+    // conflict
+    if (overwriteNames.has(skill.name)) {
+      const { warnings } = await installOne({ skill, installRoot, targets, manifest, force: true });
+      record('updated', warnings);
+    } else {
+      record('skipped');
+      messages.push(`${skill.name}: existing copy differs from this repo — kept yours (rerun init to revisit)`);
     }
   }
 

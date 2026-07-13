@@ -1,5 +1,6 @@
 ---
 name: obsidian-vault
+version: 1.0.0
 description: Search, create, and manage notes in the Obsidian vault with wikilinks and index notes. Use when user wants to find, create, or organize notes in Obsidian.
 ---
 

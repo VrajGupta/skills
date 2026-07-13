@@ -1,3 +1,9 @@
 .claude/
 node_modules/
 .DS_Store
+
+# Local-only model context — never publish (public repo)
+CONTEXT.md
+docs/
+CONTEXT/
+CLAUDE.md

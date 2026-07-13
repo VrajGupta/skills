@@ -72,10 +72,12 @@ export async function discoverSkills(repoRoot) {
     }
     seenAt.set(name, dir);
 
+    const version = parsed.data.version;
     byName.set(name, {
       name,
       description: description ?? '',
       dependencies,
+      version: typeof version === 'string' && version.length > 0 ? version : null,
       dir,
     });
   }

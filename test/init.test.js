@@ -107,3 +107,107 @@ test('an interrupted copy never leaves the install-root folder replaced or parti
     await cleanup(repo, installRoot, target);
   }
 });
+
+test('a pre-existing byte-identical unmanaged copy is adopted, not flagged', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    // Simulate another installer having copied the skill in verbatim.
+    await fs.cp(path.join(repo, 'alpha'), path.join(installRoot, 'alpha'), { recursive: true });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.equal(result.results[0].status, 'adopted');
+
+    const manifest = await readManifest(installRoot);
+    assert.ok(manifest.skills.alpha.contentHash);
+    const stat = await fs.lstat(path.join(target, 'alpha'));
+    assert.ok(stat.isSymbolicLink());
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a strictly older installed version is auto-updated, even if unmanaged', async () => {
+  const repo = await makeTmpDir('vskills-repo-');
+  const installRoot = await makeTmpDir('vskills-install-');
+  const target = await makeTmpDir('vskills-target-');
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', version: '2.0.0', body: 'New body.' });
+    // Unmanaged older copy already on disk — no manifest entry for it.
+    await writeSkill(installRoot, 'alpha', { name: 'alpha', version: '1.0.0', body: 'Old body.' });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.equal(result.results[0].status, 'updated');
+    assert.ok(result.messages.some((m) => m.includes('v1.0.0 → v2.0.0')));
+
+    const content = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    assert.ok(content.includes('New body.'));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a conflicting copy the resolver declines is kept, not overwritten', async () => {
+  const repo = await makeTmpDir('vskills-repo-');
+  const installRoot = await makeTmpDir('vskills-install-');
+  const target = await makeTmpDir('vskills-target-');
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', version: '1.0.0', body: 'Repo body.' });
+    await writeSkill(installRoot, 'alpha', { name: 'alpha', version: '1.0.0', body: 'Their body.' });
+
+    const seen = [];
+    const result = await runInit({
+      repoRoot: repo,
+      installRoot,
+      targets: [target],
+      resolveConflicts: async (conflicts) => {
+        seen.push(...conflicts);
+        return []; // keep everything
+      },
+    });
+
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].name, 'alpha');
+    assert.equal(result.results[0].status, 'skipped');
+    assert.ok(result.messages.some((m) => m.includes('kept yours')));
+
+    const content = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    assert.ok(content.includes('Their body.'));
+    const manifest = await readManifest(installRoot);
+    assert.equal(manifest.skills.alpha, undefined);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('an overwritten conflict backs up the previous copy first', async () => {
+  const repo = await makeTmpDir('vskills-repo-');
+  const installRoot = await makeTmpDir('vskills-install-');
+  const target = await makeTmpDir('vskills-target-');
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', version: '1.0.0', body: 'Repo body.' });
+    await writeSkill(installRoot, 'alpha', { name: 'alpha', version: '1.0.0', body: 'Their body.' });
+
+    const result = await runInit({
+      repoRoot: repo,
+      installRoot,
+      targets: [target],
+      resolveConflicts: async (conflicts) => conflicts.map((c) => c.name),
+    });
+
+    assert.equal(result.results[0].status, 'updated');
+
+    const content = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    assert.ok(content.includes('Repo body.'));
+
+    const backupRoot = path.join(installRoot, '.vskills-backup');
+    const backups = await fs.readdir(backupRoot);
+    assert.equal(backups.length, 1);
+    const backed = await fs.readFile(
+      path.join(backupRoot, backups[0], 'SKILL.md'),
+      'utf8'
+    );
+    assert.ok(backed.includes('Their body.'));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});

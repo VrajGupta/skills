@@ -1,5 +1,6 @@
 ---
 name: part2
+version: 1.0.0
 description: Implementation chain — read the project's docs, pick the next unblocked ticket, build it test-first, red-team it, then write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → red-team pass (which also covers refactor smells) → handoff → push-handoff. The red-team pass attacks weird inputs, failure modes, and permission edges and verifies the /part1 invariants before handoff. Use when the user runs /part2, or wants to pick up and implement the next ready ticket and push a handoff.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: part3
+version: 1.0.0
 description: Code-review chain and loop-closer — in ONE run: if the repo has no personalized part3 reviewer agent yet, create one via a mini /part1 + /part2 (idempotent — reuse it if it exists), then run it to audit the directory for bugs (failing tests + type/lint errors + invariant violations + weak/uncovered tests), frame each as a /part1-format ticket, fix it test-first like /part2, and get the diff graded by a fresh-eyes sub-agent (maker ≠ checker) — looping until the grade is clean — before writing and pushing a handoff. Composes /part1 (ticket framing) + /part2 (tdd + red-team, including refactor-smell review) on self-discovered bugs and absorbs the old test-auditor as its hunt phase. Use when the user runs /part3, or wants an autonomous review-and-fix pass that finds its own bugs, fixes them, grades the fix, and pushes a handoff.
 ---
 

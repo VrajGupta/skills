@@ -1,5 +1,6 @@
 ---
 name: ask-matt
+version: 1.0.0
 description: Ask which skill or flow fits your situation. A router over the skills in this repo.
 disable-model-invocation: true
 ---

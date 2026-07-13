@@ -1,5 +1,6 @@
 ---
 name: implement
+version: 1.0.0
 description: "Implement a piece of work based on a spec or set of tickets."
 disable-model-invocation: true
 ---

@@ -1,5 +1,6 @@
 ---
 name: loop-engineer
+version: 1.0.0
 description: Run a coding task as a closed maker→checker loop with an explicit done-condition and rubric, iterating until the goal is verifiably met instead of stopping after one pass. Use when the user wants an agent loop, "loop engineering", a self-verifying build, maker-checker, "keep going until it's done/passes", autonomous iteration on a feature or bug, or asks to drive a task to a measurable finish line.
 ---
 

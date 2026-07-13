@@ -19,6 +19,7 @@ const HELP = `V's Skills (vskills) — installer CLI for VrajGupta/skills
 
 Usage:
   vskills init                    Install every skill in the repo
+  vskills init --yes              Same, but overwrite conflicting skills without asking
   vskills add <skill...>          Install a skill plus its dependencies (or refresh it)
   vskills update [skill...]       Update installed skills (all, or just the named ones)
   vskills update --force <skill>  Overwrite a locally-modified (drifted) skill
@@ -32,6 +33,38 @@ Options:
 async function version() {
   const pkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
   return pkg.version;
+}
+
+// One summary prompt for every conflicting skill, with an editable keep-list —
+// never a wall of per-skill y/N questions. Returns the names to overwrite.
+async function promptForConflicts(conflicts) {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    console.log(banner("V's Skills — existing skills differ from this repo"));
+    for (const c of conflicts) {
+      const have = c.installedVersion ? `v${c.installedVersion}` : 'unversioned';
+      const repo = c.repoVersion ? `v${c.repoVersion}` : 'unversioned';
+      console.log(`  ${color.yellow('~')} ${color.bold(c.name)} ${color.dim(`(installed: ${have}, repo: ${repo})`)}`);
+    }
+    console.log(color.dim('  Overwritten copies are backed up to ~/.agents/skills/.vskills-backup — nothing is deleted.'));
+
+    const answer = (await rl.question(
+      `\n  Overwrite ${conflicts.length} skill(s)? ${color.dim('[Y = all / n = none / e = edit list]')} `
+    )).trim().toLowerCase();
+
+    if (answer === 'n' || answer === 'no') return [];
+    if (answer === 'e' || answer === 'edit') {
+      const keepRaw = await rl.question('  Names to KEEP as-is (comma-separated): ');
+      const keep = new Set(keepRaw.split(',').map((s) => s.trim()).filter(Boolean));
+      const unknown = [...keep].filter((k) => !conflicts.some((c) => c.name === k));
+      for (const u of unknown) console.log(color.yellow(`  ! "${u}" is not in the conflict list — ignored`));
+      return conflicts.map((c) => c.name).filter((n) => !keep.has(n));
+    }
+    return conflicts.map((c) => c.name); // default: overwrite all (backed up)
+  } finally {
+    rl.close();
+  }
 }
 
 function report(title, { results = [], messages = [] }) {
@@ -66,7 +99,10 @@ export async function main(argv) {
   const { targets } = await readConfig(installRoot);
 
   if (command === 'init') {
-    report("V's Skills — installing", await runInit({ repoRoot, installRoot, targets }));
+    const assumeYes = rest.includes('--yes') || rest.includes('-y');
+    const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !assumeYes;
+    const resolveConflicts = interactive ? promptForConflicts : null;
+    report("V's Skills — installing", await runInit({ repoRoot, installRoot, targets, resolveConflicts }));
     return 0;
   }
 

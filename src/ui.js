@@ -20,7 +20,10 @@ export const color = {
 const STATUS_STYLE = {
   installed: { symbol: '✓', paint: color.green },
   'up-to-date': { symbol: '✓', paint: color.green },
+  adopted: { symbol: '✓', paint: color.green },
+  updated: { symbol: '↑', paint: color.cyan },
   drifted: { symbol: '~', paint: color.yellow },
+  skipped: { symbol: '−', paint: color.yellow },
   missing: { symbol: '!', paint: color.red },
   'not-installed': { symbol: '○', paint: color.gray },
 };

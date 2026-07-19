@@ -24,11 +24,13 @@ guarantees it holds itself to.
 bin/vskills.js       the vskills CLI entrypoint (see "Installing with vskills" above)
 src/             vskills's implementation
 test/            vskills's test suite (node --test)
-part1/           planning chain     (idea -> spec -> tickets -> pushed handoff)
-part2/           implementation     (next ticket -> TDD -> pushed handoff)
-part3/           review/loop-closer (audit -> fix -> grade -> pushed handoff)
+part1/           planning chain     (batch design grill -> spec -> tickets -> handoff)
+part2/           implementation     (next ticket -> TDD -> independent review -> handoff)
+part3/           review/loop-closer (four-net audit -> fix -> independent grade -> handoff)
+push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
 mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored by category
+                 (including in-progress/batch-grill-me)
 ```
 
 ## part1 / part2 / part3 / loop-engineer — use as a workflow

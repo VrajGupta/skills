@@ -1,112 +1,58 @@
 ---
 name: part2
-version: 1.0.0
-description: Implementation chain — read the project's docs, pick the next unblocked ticket, build it test-first, red-team it, then write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → red-team pass (which also covers refactor smells) → handoff → push-handoff. The red-team pass attacks weird inputs, failure modes, and permission edges and verifies the /part1 invariants before handoff. Use when the user runs /part2, or wants to pick up and implement the next ready ticket and push a handoff.
+version: 1.1.0
+description: Implement one ready ticket with a locked verification gate, test-first work, independent review, and a handoff. Use for the next unblocked planned ticket.
 ---
 
-# /part2 — Implementation chain (next ticket → TDD → pushed handoff)
+# /part2 — implementation chain
 
-Orchestrate the build-and-hand-off loop: figure out what to work on from the
-docs, implement it test-first, **red-team it against the corners**, then hand off.
-This is the counterpart to `/part1` (which produces the tickets — and the
-invariants — this skill consumes and must verify).
+Build one thin slice to a green, independently reviewed gate. The leading word is **gate**: passing the ticket’s verification command is the evidence of done.
 
-## Step 1 — Read the docs and pick the next ticket
+## 1. Select one ready ticket
 
-Read, in roughly this order (use whatever the repo actually has):
-1. The **newest handoff** doc — it usually records what's already done and names
-   the next ticket to start.
-2. The project's **glossary / domain docs** — use this vocabulary everywhere.
-3. The **tracker / tickets** (`tickets.md` or GitHub issues) — in order; read each
-   candidate's **Blocked by** section and **acceptance criteria**.
-4. The relevant **spec / plans** and **ADRs** for the ticket's area.
+Read the newest handoff, domain docs, spec/ADRs, tracker, and git state. Choose the lowest-numbered open ticket whose blockers are complete; trust an explicit handoff recommendation only after verifying its blockers.
 
-**Selection rule:** pick the **lowest-numbered ticket that is not yet done and
-whose every Blocked-by ticket *is* done.** On a real tracker, prefer querying the
-frontier (tickets whose blockers are all closed) directly over rebuilding it by
-eye. Determine "done" from the newest handoff (what it reports complete) and the
-git history. If the latest handoff explicitly names the next ticket, trust that
-and verify its blockers are satisfied. If two tickets are equally ready, prefer
-the one the spec marks as the critical path. **State which ticket you picked and
-why before building.** If nothing is unblocked, say so and stop.
+State the ticket and why it is ready. If no ticket is ready, stop with the blocker instead of inventing work.
 
-## Step 2 — Lock the gate, then build it test-first
+**Complete when:** one ticket, its acceptance criteria, relevant invariants, and its dependencies are understood.
 
-**First, lock the done-condition gate.** Translate the ticket's acceptance criteria
-+ the `/part1` invariants into **one command that must exit 0** — e.g. `npm test --
-<ticket>.spec && tsc --noEmit && <lint/design-check>`. If `/part1` shipped the
-ticket with a **Verification-command**, use that. "Done" is this command passing,
-not a judgment call. Set an iteration **budget** (default 5); on exhaustion, stop
-and report the blocking failure rather than thrashing.
+## 2. Lock the gate before editing
 
-5. **`tdd`** — implement the chosen ticket with the red-green loop (reference:
-   `~/.claude/skills/tdd/SKILL.md`). Test at the highest meaningful seam with
-   external dependencies **faked** (follow the project's established testing
-   pattern); avoid testing vendor SDK internals or render details. Satisfy the
-   ticket's acceptance criteria. **Keep the existing test suite green** and the
-   type-check/lint clean. Respect the glossary + ADRs; do not fork or duplicate
-   domain logic — the existing services are the source of truth. **Refactoring is
-   not part of this step** — it's handled by Step 3's `/code-review` pass, so keep
-   this loop to red→green only.
+Use the ticket’s `Verification-command`. If it is missing or insufficient, derive one from the acceptance criteria, invariants, and project checks, then get agreement before treating it as the done condition.
 
-## Step 3 — Red-team the build (the "adult in the room" pass)
+Run the gate once before making changes when possible. Keep unrelated working-tree changes out of scope. Set a bounded repair budget (default five meaningful attempts); on exhaustion, report the current evidence and blocker.
 
-6. **Red-team pass (fresh eyes — separate context).** **before** handing off,
-   deliberately try to break what you just built. Run this pass as a **separate
-   checker that did not write the code** — spawn an `Explore`/`general-purpose`
-   sub-agent or run `/code-review` over the diff — so the judge can't inherit the
-   author's blind spots and rubber-stamp its own work (maker ≠ checker). This is
-   also where **refactoring** happens now (deferred out of the TDD loop per
-   Step 2): have the checker flag refactor smells — mysterious names, duplicated
-   code, feature envy, data clumps, primitive obsession, repeated switches,
-   divergent change, speculative generality, message chains, middleman — alongside
-   correctness. Do **not** re-run the happy path; attack the corners that
-   agent-written code usually fails in:
-   - **Weird inputs** — empty, null, oversized, wrong-type, malformed, duplicate,
-     unicode/injection, out-of-range, and concurrent/racing requests.
-   - **Failure modes** — exactly the ones named in the ticket's invariants: each
-     dependency down, slow, rate-limited, or returning garbage. Confirm the code
-     degrades/retries/surfaces as specified instead of crashing or hanging.
-   - **Permission & boundary edges** — wrong user, missing/expired/forged token,
-     privilege escalation, accessing another tenant's data, the trust edges the
-     `/part1` invariants drew.
-   Then **verify the `/part1` invariants actually hold** (latency budget,
-   failure-mode behavior, security boundaries) — don't assume the happy-path tests
-   covered them. Fix what breaks **test-first** (add the failing case, then the fix,
-   keep the suite green); apply refactor findings directly. **After every fix,
-   re-run the Step 2 gate command and re-run this checker pass** — a fix is not
-   accepted until the full gate passes again, so a corner-fix can't silently
-   regress a neighbor. Loop maker→checker until the gate is green or the budget is
-   exhausted. If a gap is genuinely out of scope for this ticket, record it
-   **honestly** as a follow-up in the handoff rather than hiding it. This is the
-   step where you are the skeptic, not the author.
+**Complete when:** a concrete command will prove the ticket complete.
 
-## Step 4 — Hand off and push (both required)
+## 3. Build test-first
 
-7. **`handoff`** — write a handoff doc (project's usual location + the `$TMPDIR`
-   copy): what was built, which ticket it completed, the green-test state, **what
-   the red-team pass tried and what it found** (including any unfixed edge cases
-   and refactor findings), honest follow-ups (anything stubbed/in-memory/not-yet-
-   wired), and the **next** ready ticket.
-8. **`push-handoff`** — **always run this last.** Read and follow the
-   **`push-handoff`** skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the
-   handoff doc + all changed code/CONTEXT artifacts, commit, and push to the
-   configured remote. **`/part2` is not complete until push succeeds** (or you
-   report an auth blocker with the skill's recovery steps). Never commit secrets.
+Use `tdd` for a red → green loop at the highest meaningful seam. Add or improve tests for the ticket’s observable behavior and invariants; fake external dependencies according to the project’s testing pattern.
 
-## Rules
+Keep scope to one ticket. Preserve project vocabulary and existing domain boundaries; do not combine opportunistic rewrites with the feature.
 
-- Run the skills **sequentially**; finish each before the next — **build →
-  red-team → `handoff` → `push-handoff`**, every time.
-- **Never skip the red-team pass to save time.** A green happy-path suite is not
-  "done" — corners, invariants, and refactor smells are where agent-written code
-  fails. No handoff before the red-team pass has run.
-- Implement **one ticket per run** unless the user asks for more — thin slices
-  keep handoffs clean and reviewable.
-- Be honest in the handoff about partial work **and unfixed edge cases**, so the
-  next session knows the true state.
-- Defer project-specific conventions to the sub-skills; keep this orchestrator
-  project-agnostic.
-- End with a short summary: the ticket completed, the test state, **the red-team
-  findings (including refactors applied)**, follow-ups, the **pushed commit
-  hash**, and the remote branch — omitting push means the run failed.
+**Complete when:** the ticket’s behavior is implemented and the locked gate is green.
+
+## 4. Run a fresh-eyes challenge
+
+Use a separate-context reviewer when available, or begin a clean `code-review` pass that has not authored the change. Give it the diff, ticket, gate, and invariants—not the maker’s conclusion.
+
+The reviewer must challenge malformed, empty, oversized, duplicate, concurrent, and hostile inputs; named dependency failures and recovery paths; authorization, privacy, and tenant/trust boundaries; invariant coverage, weak tests, and avoidable design/refactor smells.
+
+For each valid finding: reproduce it with a failing test or clear evidence, fix it test-first, re-run the gate, then re-review the changed risk area. Record genuine out-of-scope findings as follow-ups.
+
+**Complete when:** the gate is green after review and every unresolved finding is explicit.
+
+## 5. Hand off and optionally push
+
+Use `handoff` to record the completed ticket, gate output, review findings/fixes, known limitations, and next ready ticket.
+
+Use `push-handoff` only after explicit user authorization. Otherwise leave a clean handoff and state that the work has not been committed or pushed.
+
+## Non-negotiables
+
+- One ticket per run unless the user asks otherwise.
+- The gate—not confidence—is the completion criterion.
+- Maker and reviewer must be separate contexts whenever tooling permits.
+- Never claim a test, commit, push, or deployment succeeded without checking it.
+
+End with: ticket completed, exact gate result, review findings, follow-ups, handoff location, and commit/push status.

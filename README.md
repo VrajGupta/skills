@@ -29,9 +29,38 @@ part2/           implementation     (next ticket -> TDD -> independent review ->
 part3/           review/loop-closer (four-net audit -> fix -> independent grade -> handoff)
 push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
+pipeline/        the delivery-factory skills: tracker stage protocol, the three roles,
+                 shared-worktree safety, gated batch delivery, audit/recovery
 mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored by category
                  (including in-progress/batch-grill-me)
 ```
+
+## pipeline/ — running work as a factory
+
+`part1/2/3` are the chains you run. `pipeline/` is the machinery around them: how a
+ticket moves between stages, who is allowed to move it, and what counts as proof.
+
+| Skill | Use when |
+|---|---|
+| `linear-pipeline` | Stage protocol — Linear is the write surface, GitHub issues read-only |
+| `linear-label-pipeline` | Operator manual: why a ticket didn't move, duplicates, label-vs-state |
+| `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
+| `specialist-profiles` | Build/verify the planner, coder, debugger roles so maker != checker is structural |
+| `state-driven-pipeline-recovery` | The pipeline is thrashing or reporting false greens |
+| `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
+| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `part2` invokes |
+| `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts |
+| `invariant-evidence-review` | Is an invariant actually enforced, or only documented? |
+| `codebase-audit` | Audit a whole system rather than one diff |
+| `shared-worktree-safety` | Anything else is writing to the same checkout |
+| `shared-worktree-delegation` | Fanning subagents into one tree with explicit file lanes |
+| `parallel-subagent-implementation` | Authorized parallel tickets with disjoint lanes |
+| `subagent-batch-implementation` | An authorized ticket *range* delivered in dependency waves |
+| `ai-subscription-unit-economics` | Pricing and usage caps when inference is your cost of goods |
+
+The load-bearing rule across all of them: **done is a locked verification command that was
+actually run after the final change**, plus an independent checker for non-trivial work,
+plus truthful tracker state.
 
 ## part1 / part2 / part3 / loop-engineer — use as a workflow
 

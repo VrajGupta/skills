@@ -1,17 +1,93 @@
 ---
 name: push-handoff
-version: 1.0.0
-description: Finish a verified handoff by committing and pushing only the intended changes after explicit user authorization.
+version: 2.0.0
+description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final step of part1/part2/part3, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 
-# Push handoff
+# push-handoff â€” authorized commit & push of verified work
 
-Use this only after the user explicitly authorizes a commit and push.
+The last step of a chain, and the one most likely to produce a **false claim**. "Pushed" is a fact about a remote, not a feeling about a command.
 
-1. **Check the repository state.** Confirm the current branch, remote, `git status`, and the exact files intended for the handoff. Stop and ask when unrelated changes, generated files, merge conflicts, or possible secrets are present.
-2. **Verify the change.** Run the ticket's `Verification-command` or the project’s stated test/type/lint gate. A failing or absent gate is a blocker; report it rather than creating a misleading commit.
-3. **Review before staging.** Inspect the diff and stage only the intended source, test, documentation, ticket, and handoff files. Never stage secrets, credentials, or unrelated user changes.
-4. **Commit.** Use the project’s commit convention. State the commit hash and the files included.
-5. **Push and verify.** Push the intended branch, then verify the remote branch and clean/expected local status. Do not open, merge, or modify a pull request unless the user explicitly asks.
+## Step 0 â€” Authority check
 
-Completion requires a verified push. If authorization, a clean scope, a green gate, or remote authentication is missing, leave the working tree intact and report the exact blocker plus the next safe action.
+Push only when one of these is true:
+
+- The user explicitly authorized commit/push for this run.
+- The active skill chain was invoked with push in scope (e.g. `/part1` including its final push step).
+- A standing project rule grants it (e.g. an auto-push skill the user configured).
+
+If none hold: **stop, write the handoff to disk, and report that push needs authorization.** Do not push "to be helpful."
+
+## Step 1 â€” Verify before you commit
+
+Never push unverified work.
+
+- The ticket's `Verification-command` has been run **after the final edit**, and passed.
+- You have its **verbatim output** in hand.
+
+If the gate is red, you are not pushing. You are reporting a blocker.
+
+## Step 2 â€” Stage narrowly
+
+```powershell
+git status -sb
+```
+
+- Stage **only** paths this ticket owns.
+- **Unrelated dirty files are sacred** â€” someone else may be mid-edit in a shared worktree. Never `git add -A` / `git add .`.
+- Sweep for junk before staging: duplicate `file 2.ts` artifacts from sloppy tools, stray build output, editor temp files.
+- **Scan the diff for secrets** â€” keys, tokens, `.env` contents, connection strings. A pushed secret is a rotation incident, not an oops.
+
+## Step 3 â€” Commit
+
+```
+type(scope): subject
+
+<body â€” why, not what>
+
+Refs: LUL-123
+```
+
+`type` âˆˆ `feat` `fix` `test` `refactor` `docs` `chore`.
+
+The `Refs:` trailer is how the work attaches to the tracker. Omit it and the ticket loses its evidence trail.
+
+## Step 4 â€” Push and PROVE it
+
+```powershell
+git push
+git rev-parse HEAD
+git fetch origin; git rev-parse origin/<branch>
+```
+
+The claim "pushed" is only valid when **local HEAD SHA == remote branch SHA**, read back after a fetch. Paste both.
+
+A successful-looking `git push` that raced with someone else, hit a protected branch, or went to the wrong remote will still print encouraging output.
+
+## Step 5 â€” Report
+
+```
+Commit: <sha>
+Branch: <name>
+Remote: <origin/branch> @ <sha>   â† fetched readback
+Gate: `<command>` â†’ pass
+Files: <list>
+```
+
+## Never
+
+- **Never force-push.** Not with `--force`, not with `--force-with-lease`, unless the user explicitly asks and understands what's being overwritten.
+- Never commit secrets.
+- Never stage paths outside the ticket.
+- Never claim push success without the fetched remote SHA.
+- Never push a red gate.
+- Never push to `main` on a repo whose convention is PRs â€” check the convention first.
+
+## Recovery
+
+| Failure | Do this |
+|---|---|
+| Auth failure | Report it with the exact error and recovery step (`gh auth login` etc.). Do not retry blindly. |
+| Non-fast-forward | `git fetch`, inspect the divergence, rebase **only** if the local work is unpushed and clean. Never force. |
+| Protected branch | Open a PR instead; report that push-to-branch is not the delivery path here. |
+| Pre-commit hook fails | Fix the underlying issue. Never `--no-verify` unless the user asked. |

@@ -1,63 +1,107 @@
 ---
 name: part3
-version: 1.1.0
-description: Audit an existing codebase, frame confirmed defects as gated tickets, fix them test-first, and independently grade the result. Use for a systematic debug or quality pass.
+version: 2.0.0
+description: Audit and close the loop on work a coder claims is finished â€” set an audit boundary, hunt with four nets (failing tests, static/type/lint, invariant violations, weak tests) before fixing anything, repair one framed defect at a time test-first, then grade independently and either accept or bounce. Use when the user runs /part3, when a ticket sits in Debugger Ready, when asked to verify/audit/grade someone else's work, or when you need an independent check that a change is actually done. This is the checker half of makerâ‰ checker.
 ---
 
-# /part3 — review and loop-closure chain
+# part3 â€” Audit & loop closure
 
-Find real defects, prove them, and close the loop without letting the maker approve itself. The leading word is **four-net audit**: failing tests, static checks, invariant violations, and weak coverage.
+**Leading word: four-net audit.**
 
-## 1. Set the audit boundary
+You are the checker. The maker's narrative is a **claim**, not evidence. Nothing the coder wrote in a comment counts until you re-ran it yourself.
 
-Confirm the repository and scope if absent. Read the newest handoff, project/domain docs, invariants, relevant specs/ADRs, current git state, and established test/type/lint commands.
+If the tracker is Linear, load `linear-pipeline` first: your queue is **Debugger Ready**, and your first act is moving the ticket to **Debugging**.
 
-State what is in scope and what evidence will count. Keep unrelated working-tree changes out of scope.
+## Step 1 â€” Set the audit boundary
 
-**Complete when:** the audit boundary and validation commands are explicit.
+Before reading any code, write down:
 
-## 2. Hunt with four nets
+- **Repo + branch + commit range** under review
+- **Scope** â€” this ticket's diff, or a wider surface if asked
+- **What evidence will count** â€” the exact commands whose output you will accept as proof
+- **Baseline** â€” `git status -sb`, and which dirty paths are not yours
 
-Run and inspect the available checks, then list confirmed candidates before fixing anything:
+Capture the ticket's locked `Verification-command`. If the ticket has none, that is itself a finding: the work was never gated.
 
-1. failing tests;
-2. static/type/lint errors;
-3. code paths that violate documented performance, failure, privacy, security, or permission invariants;
-4. weak, missing, tautological, or over-mocked tests for important behavior.
+## Step 2 â€” Hunt with four nets BEFORE fixing anything
 
-For each candidate, collect reproducible evidence. A suspicion without evidence is a review note, not a defect to “fix.” Prioritize by user harm, security/data risk, and likelihood.
+Resist the urge to repair the first thing you see. Sweep all four nets first, then triage. Fixing while hunting means you stop hunting.
 
-**Complete when:** every in-scope finding is classified as confirmed defect, follow-up, or clean—with evidence.
+**Net 1 â€” Failing tests.** Run the ticket gate. Then run a broader suite proportional to the change. Record real output.
 
-## 3. Frame and repair one defect at a time
+**Net 2 â€” Static analysis.** Typecheck, lint, build. Type errors hiding behind a green unit test are common.
 
-For every confirmed defect, use the `/part1` ticket shape: violated invariant or behavior, acceptance criteria, and a runnable `Verification-command`. Create or modify an external tracker only after explicit user authorization; otherwise record the ticket locally in the audit handoff.
+**Net 3 â€” Documented invariant violations.** Take the invariants from the plan / ticket and check each is actually *enforced and measured*, not merely mentioned. Cover: performance budgets, dependency failure and recovery, security/authz boundaries, privacy, permissions, data integrity. See `invariant-evidence-review` for the deeper method.
 
-Use `/part2` discipline to fix it: reproduce first, add the failing test, make the smallest safe change, and run the defect gate plus relevant project checks. Use a bounded repair budget; record blockers honestly instead of thrashing.
+**Net 4 â€” Weak, missing, tautological, or over-mocked tests.** The dangerous case is not a red test; it's a green one that proves nothing:
+- assertions that mock the thing under test
+- `expect(true).toBe(true)` in disguise
+- substring assertions (`not.toContain("9.99")` passes/fails wrongly when `"119.99"` exists â€” anchor the token)
+- happy path only, no malformed / empty / oversized / concurrent / hostile input
+- the production entry point bypasses the seam the test exercises
 
-**Complete when:** each repaired defect has a green gate and a traceable ticket/audit record.
+**Happy-path green alone is insufficient.** A diff that passes only its own new test has not been audited.
 
-## 4. Grade with fresh eyes
+## Step 3 â€” Frame, then repair one defect at a time
 
-Use a separate Hermes `delegate_task` reviewer when permitted, or a clean independent `code-review` pass. The checker receives the diff, ticket, invariants, and gate output—not the maker’s reasoning or self-grade.
+For each finding worth acting on, write it in ticket shape before touching code:
 
-It must test the changed edges, verify the stated invariants, inspect test quality, and return either **clean** or evidence-backed **findings** with severity and a required repair/follow-up.
+```
+Defect: <what is wrong>
+Evidence: <command + real output>
+Invariant/criterion violated: <which one>
+Verification-command: <exact command that will prove the fix>
+```
 
-A material finding returns to step 3. After repair, re-run the relevant gate and obtain a fresh grade. Stop at the budget with a clear list of remaining risks.
+Then: reproduce â†’ write the failing test â†’ smallest correct fix â†’ green gate. One defect at a time. Do not batch repairs into one heroic commit.
 
-**Complete when:** every repaired defect has a clean independent grade or an explicit unresolved finding.
+**Scope discipline:** you may make small, self-contained fixes. Structural problems â€” wrong architecture, missing prerequisite, a ticket that cannot land as specified â€” are **not yours to fix**. They bounce.
 
-## 5. Hand off and optionally push
+## Step 4 â€” Independent grade
 
-Use `handoff` to record scope, four-net results, confirmed defects, gates, grade, unresolved risks, and the next recommended audit target.
+Decide one of three verdicts:
 
-Use `push-handoff` only after explicit user authorization. Do not create Claude-specific agent files; use Hermes skills and fresh contexts directly.
+**A. Holds.** Gate re-run passes, broader suite passes, review clean.
+â†’ Comment the proof â†’ Debugging â†’ **Done**.
+
+**B. Small gaps.** You fixed them yourself, test-first, and re-gated.
+â†’ Comment what you changed and why it was in-scope â†’ Debugging â†’ **Done**.
+
+**C. Structural / too big.** â†’ **Bounce.** Comment with the bounce template, then Debugging â†’ **Coding**.
+
+```
+bounce:
+what is wrong:
+evidence (command output):
+what coder must change:
+verification to re-run:
+```
+
+The coder treats a bounce as the new top-priority spec for that ticket.
+
+Parent issues go Done only when **all children are Done** *and* the parent-level review passes.
+
+## Step 5 â€” Handoff, and optional push
+
+Produce a handoff with the mandatory fields (ticket ID, paths, verification command, **verbatim** output, invariants proven/unproven, commit SHAs, next owner + intended state, follow-ups). Push only under explicit authority â€” see `push-handoff`.
 
 ## Non-negotiables
 
-- Evidence before repair; a green happy path alone is not evidence.
-- Maker and checker are separate contexts whenever tooling permits.
-- Do not regenerate a generic agent file or hide new work outside the audit trail.
-- Never claim a gate, commit, push, PR, or deployment succeeded without verification.
+- **Evidence before repair.** Never fix a thing you cannot first demonstrate is broken.
+- **Never trust the maker's narrative** as evidence for anything.
+- Do not lower priority silently.
+- Do not reverse state to Coding without the bounce structure.
+- Maker â‰  checker: if you wrote the code, you are not a valid grader for it. Get a fresh context.
+- Re-read the ticket state after every write.
 
-End with: audit scope, findings by net, defects fixed, exact gate results, independent grade, follow-ups, handoff location, and commit/push status.
+## Verification
+
+```
+- [ ] Entered from Debugger Ready; marked Debugging while working
+- [ ] All four nets swept before any repair
+- [ ] Gate re-run independently, output pasted verbatim
+- [ ] Broader verify proportional to the change
+- [ ] Verdict is exactly one of: Done / small fix + Done / bounce
+- [ ] Bounce (if any) used the four-field structure
+- [ ] Parent Done only if children Done + parent review clean
+```

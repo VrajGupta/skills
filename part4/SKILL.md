@@ -37,7 +37,7 @@ read a line of the diff → **`Done`** on a pass, or back to `Debugger Ready` /
 matching Linear label, and the matching GitHub label — all three, old state label
 removed — for **only the ticket you are grading**; the rest of `Grading Ready`
 stays idle. Read `~/.claude/skills/linear-pipeline/SKILL.md` for the exact
-mechanics — including the GitHub Issues Sync safety check, the
+mechanics — including the GitHub label-mirror canary, the
 read-back-after-write rule, and the **no-tracker fallback**.
 
 You are the only stage that may set `Done`.

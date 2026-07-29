@@ -51,20 +51,28 @@ Invented names ("In Review", "In Progress", "Ready") **silently no-op**. There i
 | Actor | From → To | Condition |
 |---|---|---|
 | Human | (create) → Planned | Idea capture |
-| Human | Planned → Agent Ready | **Promotion gate — agents do not self-promote** |
 | Human | anything → Canceled | Kill switch |
-| Planner | Agent Ready → Coding (parent) | Only after plan doc + children exist |
-| Planner | (create children) → Coding | Children are born ready for the coder |
+| Planner | (create tickets) → Planned | Every ticket is born here |
+| Planner | Planned → Agent Ready | **Only when every Blocked-by ticket is done** |
+| Coder | Agent Ready → Coding | The ONE ticket being built |
 | Coder | Coding → Debugger Ready | Only the ONE sub-issue worked |
 | Debugger | Debugger Ready → Debugging | On starting the audit |
 | Debugger | Debugging → Grading Ready | After the red-team pass, with the gate green |
 | Grader | Grading Ready → Grading | On starting the grade |
 | Grader | Grading → Done | PASS: gate green, no blocking finding |
 | Grader | Grading → Debugger Ready | FAIL, correctness — with the finding comment |
-| Grader | Grading → Coding | FAIL, missing scope or tests — with the finding comment |
+| Grader | Grading → Agent Ready | FAIL, missing scope or tests — with the finding comment |
 | Grader | Grading → Planned | FAIL, ticket unbuildable as written |
 
-The coder never moves the parent. Nobody skips states.
+Nobody skips states.
+
+**`Planned` is the blocked queue; `Agent Ready` is the claimable queue.** That is the
+whole distinction, and it is why the planner — not a human — does the promotion: the
+condition is mechanical (are this ticket's blockers all done?), so a gate that needs a
+human to evaluate it just stalls the fleet on someone's inbox. Anything sitting in
+`Planned` is either waiting on a blocker or waiting to be repaired after a grader
+bounced it. A ticket in `Agent Ready` can be picked up right now, by anyone, with no
+further checking — if that is not true of a ticket, it does not belong in that column.
 
 **Only the grader sets `Done`.** Every earlier stage hands work forward; none of them
 close it. A stage that could close its own output would be judging itself, which is the
@@ -116,27 +124,65 @@ Body must let a **cold agent with no chat history** succeed:
 
 A child without a copy-pasteable Verification-command is **not ready**. Do not create it.
 
-## 6. GitHub — banned while Issues Sync is ON
+## 6. GitHub — mirror the stage label, carefully
 
-**Establish the regime before the first GitHub write of a run, and say which you found.**
+Issues Sync is **ON** for `VrajGupta/Lullabook`, and the project wants the stage label
+on **both** trackers so either side can be queried. Both of those are true at once, so
+this section is about doing it without repeating the incident below.
 
-- **Sync ON** (the default for `VrajGupta/Lullabook`) → stage lives in **Linear state
-  only**; GitHub issues are read-only and the ban below applies in full.
-- **Sync OFF** → GitHub is a separate tracker rather than a mirror, so mirroring the
-  stage there is safe: set a label matching the Linear state exactly (`Coding`,
-  `Debugging`, `Grading Ready`, …), adding the new one and removing the previous one
-  in the same edit. Linear state stays authoritative; the label is a mirror — useful
-  for cross-tracker queries and GitHub-side automation, never the source of truth.
-- **Cannot tell** → assume ON. Being wrong in that direction costs a missing label;
-  being wrong in the other manufactures duplicate tickets in two systems at once.
+**Linear state remains the single source of truth.** The GitHub label is a mirror. If
+the two ever disagree, Linear is right and the label is stale — never resolve the
+conflict the other way, and never read a GitHub label to decide what stage something is
+in.
 
-Why the ban exists:
+### The incident this guards against
 
-Linear ↔ GitHub Issues Sync is ON. Labeling GitHub issues `ready-for-agent` (GH #161–168) spawned duplicate Linear issues LUL-121–128, all of which had to be canceled.
+> Labeling GitHub issues `ready-for-agent` (GH #161–168) spawned duplicate Linear issues
+> LUL-121–128, all of which had to be canceled.
 
-**Allowed:** `git` clone/fetch/commit/push · read PRs, diffs, checks, Actions · read mirrored issue text · `gh pr` flows · `gh issue list -R <repo> --search "LUL-123"` (read).
+Issue-level sync mirrors GitHub issues into Linear. Under some configurations a label
+edit is enough to re-trip that mirror, and the sync creates a *second* Linear issue
+rather than updating the existing one. The failure is silent from the GitHub side: the
+label lands, the command exits 0, and the duplicate appears in Linear a moment later.
+So a successful `gh` call is not evidence that the write was safe.
 
-**Forbidden for pipeline work:** `gh issue create` · `gh issue edit` for stage · `gh issue close`/reopen for pipeline closure · any stage label on a GitHub issue · treating GH labels as the source of truth.
+### The canary — run it once per repo, before the first label mirror
+
+Because label-level sync behavior can't be read off the repo, **test it instead of
+assuming it**:
+
+1. Count the team's issues in Linear (`list_issues`, note the highest identifier).
+2. Mirror the stage label onto **one** GitHub issue — the one you're actually working.
+3. Wait a few seconds, then **re-query Linear** and count again.
+4. **No new issue** → label mirroring is safe here. Record that in the run notes and
+   proceed normally for the rest of the run.
+   **A new issue appeared** → immediately cancel the duplicate, remove the GitHub
+   label, fall back to **Linear-only** stage writes for the remainder of the run, and
+   tell the user that GitHub label mirroring re-trips the sync on this repo.
+
+One canary per repo per run is cheap; discovering the answer seven duplicates later is
+not. This is the same discipline as §3 — you have not written what you have not read
+back, and here the read-back has to be on the *other* tracker, because that's where the
+damage shows up.
+
+### Mirroring rule
+
+Once the canary passes: on every stage move, edit the GitHub issue so it carries
+**exactly one** stage label matching the Linear state name exactly — add the new one and
+remove the previous one **in the same edit**, so the issue is never briefly in two
+stages or none. Only ever label a GitHub issue that already has a Linear counterpart;
+never `gh issue create` for pipeline work, because a brand-new labeled GitHub issue is
+precisely the shape that manufactured LUL-121–128.
+
+**Allowed:** `git` clone/fetch/commit/push · read PRs, diffs, checks, Actions · read
+mirrored issue text · `gh pr` flows · `gh issue list -R <repo> --search "LUL-123"` ·
+**`gh issue edit --add-label <stage> --remove-label <previous>` on an already-synced
+issue, after the canary passes.**
+
+**Still forbidden:** `gh issue create` for pipeline work · `gh issue close`/reopen for
+pipeline closure · treating a GitHub label as the source of truth · labeling a GitHub
+issue that has no Linear counterpart · continuing to mirror after the canary caught a
+duplicate.
 
 GitHub stays in the loop through **commit trailers**, not issue writes:
 
@@ -156,8 +202,8 @@ Refs: LUL-123
 
 | Stage | Queue | Then load |
 |---|---|---|
-| planner | Agent Ready | `part1` |
-| coder | Coding (incl. bounce returns) | `part2` |
+| planner | Planned (new efforts + bounce returns) | `part1` |
+| coder | Agent Ready (incl. bounce returns) | `part2` |
 | debugger | Debugger Ready | `part3` |
 | grader | Grading Ready | `part4` |
 

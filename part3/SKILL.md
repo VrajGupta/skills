@@ -30,7 +30,7 @@ covered. Each move sets the Linear status, the matching Linear label, and the
 matching GitHub label — all three, old state label removed — for **only the
 ticket you are working**; the rest of `Debugger Ready` stays idle. Read
 `~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics — including
-the GitHub Issues Sync safety check, the read-back-after-write rule, and the
+the GitHub label-mirror canary, the read-back-after-write rule, and the
 **no-tracker fallback**.
 
 **No Linear or GitHub? The debugging pass still runs in full.** Attack the same

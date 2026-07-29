@@ -26,8 +26,8 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
 Linear status, the matching Linear label, and the matching GitHub label — all
 three, old state label removed. Read
 `~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics; it is the
-shared state machine all four stages obey — including the GitHub Issues Sync
-safety check, the read-back-after-write rule, and the **no-tracker fallback**.
+shared state machine all four stages obey — including the GitHub label-mirror
+canary, the read-back-after-write rule, and the **no-tracker fallback**.
 
 **No Linear or GitHub? The chain still runs in full.** The trackers are where
 state is *recorded*, not what makes the planning correct. With neither available,

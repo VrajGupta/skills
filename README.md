@@ -49,7 +49,7 @@ Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Grading Ready
 `part4` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
 invariants only, never the author's handoff — because a confident rationale from the
 author is the strongest thing that corrupts a review. A failed grade routes by *kind*
-(correctness -> Debugger Ready, missing scope or tests -> Coding, unbuildable ticket ->
+(correctness -> Debugger Ready, missing scope or tests -> Agent Ready, unbuildable ticket ->
 Planned), and a third failed grade escalates to a human instead of looping forever.
 
 The stage protocol itself lives in [`pipeline/linear-pipeline`](pipeline/linear-pipeline/SKILL.md):

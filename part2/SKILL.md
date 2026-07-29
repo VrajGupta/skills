@@ -27,7 +27,7 @@ status, the matching Linear label, and the matching GitHub label — all three, 
 state label removed — and applies to **only the one ticket you are building**;
 the rest of `Agent Ready` stays untouched. Read
 `~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics — including
-the GitHub Issues Sync safety check, the read-back-after-write rule, and the
+the GitHub label-mirror canary, the read-back-after-write rule, and the
 **no-tracker fallback**.
 
 **No Linear or GitHub? The build still runs in full.** Take the next ticket from

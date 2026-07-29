@@ -1,6 +1,6 @@
 ---
 name: part4
-version: 1.0.0
+version: 1.1.0
 description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a ticket from Grading Ready, moves it to Grading on both Linear and GitHub, reads ONLY the diff plus the ticket and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass closes the ticket to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the whole Grading Ready queue or "all the issues" — it finds them on the board itself and drains them one at a time.
 ---
 
@@ -97,7 +97,10 @@ Then gather exactly three things, and deliberately nothing else:
 2. **The ticket** — What-to-build, Acceptance-criteria, the named invariants, and
    the `Verification-command` that `/part1` shipped with it.
 3. **The project's CONTEXT / invariant docs** — glossary, ADRs, the invariants
-   the effort locked.
+   the effort locked. Enter through the **retrieval router** (`ROUTER.md`) if the
+   repo has one, and grade against the *live* decision — an index line marked
+   superseded means that ADR is not the standard, and failing a diff for
+   contradicting a reversed decision is a bad bounce.
 
 ### What you must NOT read
 

@@ -1,6 +1,6 @@
 ---
 name: part1
-version: 1.0.0
+version: 1.1.0
 description: Planning chain and the first stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets that land on the board in Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /part1, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /part4 bounced back as unbuildable.
 ---
 
@@ -63,6 +63,11 @@ spec, a one-shot prompt), use that as the subject. If not, ask one question:
 "What effort am I grilling?" Then read the project's existing planning docs
 (whatever the repo uses — e.g. a glossary/`CONTEXT.md`, the newest handoff,
 related plans and ADRs) so the grill is grounded in current decisions.
+
+**If the repo has a retrieval router** (`ROUTER.md` beside its docs), read it
+first and let it route you to the right index — score candidates from index
+lines before opening anything. Reading the whole docs tree when a router exists
+burns the context you need for the grill itself.
 
 ## Step 0 — Size the effort (the `/wayfinder` gate)
 

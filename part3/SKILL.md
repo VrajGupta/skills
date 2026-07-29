@@ -1,6 +1,6 @@
 ---
 name: part3
-version: 1.0.0
+version: 1.1.0
 description: Debugging and hardening chain — the third stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built: attacks weird inputs, failure modes, permission and tenant boundaries, verifies the /part1 invariants actually hold, audits test quality, and applies refactors — fixing everything test-first against the ticket's Verification-command, then moving the ticket to Grading Ready for /part4 to judge. Also runs in sweep mode over a whole directory to hunt bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo (idempotent). Use when the user runs /part3, wants agent-written code attacked before it can close, wants a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes its own bugs. Also use it when the user says to harden "all the issues" in Debugger Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
@@ -68,7 +68,10 @@ didn't name either, take the oldest ticket in `Debugger Ready`, and say which yo
 picked. Read
 the project's **CONTEXT / invariant docs** (glossary/`CONTEXT.md`, release-scope /
 invariants planning docs, ADRs) and the **newest handoff**, so the audit is grounded
-in the project's real constraints — not guesses. Note the project's **test command**,
+in the project's real constraints — not guesses. If a **retrieval router**
+(`ROUTER.md`) sits beside those docs, enter through it — its index lines carry
+status, so a superseded ADR is visible without opening it, and you attack the
+code against the constraint that is actually live. Note the project's **test command**,
 **test globs**, and the **gate command** shape it already uses (defer tracker / label /
 doc conventions to the sub-skills — keep this orchestrator project-agnostic).
 

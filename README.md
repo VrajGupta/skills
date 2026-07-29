@@ -24,12 +24,62 @@ guarantees it holds itself to.
 bin/vskills.js       the vskills CLI entrypoint (see "Installing with vskills" above)
 src/             vskills's implementation
 test/            vskills's test suite (node --test)
-part1/           planning chain     (idea -> spec -> tickets -> pushed handoff)
-part2/           implementation     (next ticket -> TDD -> pushed handoff)
-part3/           review/loop-closer (audit -> fix -> grade -> pushed handoff)
+part1/           planning chain     (batch design grill -> spec -> tickets -> handoff)
+part2/           implementation     (next ticket -> TDD -> self-check -> handoff)
+part3/           debug/harden       (four-net audit -> red-team the corners -> fix -> handoff)
+part4/           grade/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
+push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
+pipeline/        the delivery-factory skills: tracker stage protocol, the three roles,
+                 shared-worktree safety, gated batch delivery, audit/recovery
 mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored by category
+                 (including in-progress/batch-grill-me)
 ```
+
+## pipeline/ — running work as a factory
+
+`part1/2/3/4` are the chains you run, one per pipeline stage, each on a different
+model so no stage ever reviews its own work:
+
+```
+Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Grading Ready -> Grading -> Done
+   part1        |          part2         |             part3          |            part4
+```
+
+`part4` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
+invariants only, never the author's handoff — because a confident rationale from the
+author is the strongest thing that corrupts a review. A failed grade routes by *kind*
+(correctness -> Debugger Ready, missing scope or tests -> Agent Ready, unbuildable ticket ->
+Planned), and a third failed grade escalates to a human instead of looping forever.
+
+The stage protocol itself lives in [`pipeline/linear-pipeline`](pipeline/linear-pipeline/SKILL.md):
+exact state names, who may move what, re-read after every write, whether GitHub stage
+labels are safe on a given repo, and how to run every stage with no tracker at all.
+
+`part1/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
+ticket moves between stages, who is allowed to move it, and what counts as proof.
+
+| Skill | Use when |
+|---|---|
+| `linear-pipeline` | Stage protocol — Linear is the write surface, GitHub issues read-only |
+| `linear-label-pipeline` | Operator manual: why a ticket didn't move, duplicates, label-vs-state |
+| `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
+| `specialist-profiles` | Build/verify the planner, coder, debugger roles so maker != checker is structural |
+| `state-driven-pipeline-recovery` | The pipeline is thrashing or reporting false greens |
+| `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
+| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `part2` invokes |
+| `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts |
+| `invariant-evidence-review` | Is an invariant actually enforced, or only documented? |
+| `codebase-audit` | Audit a whole system rather than one diff |
+| `shared-worktree-safety` | Anything else is writing to the same checkout |
+| `shared-worktree-delegation` | Fanning subagents into one tree with explicit file lanes |
+| `parallel-subagent-implementation` | Authorized parallel tickets with disjoint lanes |
+| `subagent-batch-implementation` | An authorized ticket *range* delivered in dependency waves |
+| `ai-subscription-unit-economics` | Pricing and usage caps when inference is your cost of goods |
+
+The load-bearing rule across all of them: **done is a locked verification command that was
+actually run after the final change**, plus an independent checker for non-trivial work,
+plus truthful tracker state.
 
 ## part1 / part2 / part3 / loop-engineer — use as a workflow
 

@@ -1,7 +1,7 @@
 ---
 name: provider-integration-tdd
 version: 1.0.0
-description: Test-first method for integrations with external providers â€” queues, signed webhooks, idempotent lifecycle operations, and owned artifacts â€” where the failure modes are delivery-order, replay, partial failure, and forged payloads rather than plain logic bugs. Use when implementing or auditing a webhook receiver, a job queue consumer, a payment/billing lifecycle, an upload/artifact pipeline, or any code path where a third party can call you back.
+description: Test-first method for integrations with external providers — queues, signed webhooks, idempotent lifecycle operations, and owned artifacts — where the failure modes are delivery-order, replay, partial failure, and forged payloads rather than plain logic bugs. Use when implementing or auditing a webhook receiver, a job queue consumer, a payment/billing lifecycle, an upload/artifact pipeline, or any code path where a third party can call you back.
 ---
 
 # provider-integration-tdd
@@ -30,13 +30,13 @@ Every provider integration must have tests for whichever of these apply:
 ### 3. Idempotent lifecycle
 
 - Every state-changing operation needs an **idempotency key** and a test that replaying it is a no-op.
-- Test the **full lifecycle path**: created â†’ updated â†’ canceled â†’ refunded, including terminal-state transitions that must be rejected.
+- Test the **full lifecycle path**: created → updated → canceled → refunded, including terminal-state transitions that must be rejected.
 - Test that a **retry after a timeout** (where the provider succeeded but you never saw the response) doesn't double-charge / double-provision.
 - Money and provisioning are the classic cases: a duplicate is not a cosmetic bug.
 
 ### 4. Owned artifacts
 
-- Assert ownership/tenancy on every read *and* write. Test **wrong-tenant access explicitly** â€” this is the invariant most often assumed and least often tested.
+- Assert ownership/tenancy on every read *and* write. Test **wrong-tenant access explicitly** — this is the invariant most often assumed and least often tested.
 - Test lifecycle: orphaned artifacts, cleanup, and what happens when the provider's copy disappears.
 - Signed URLs: test expiry and scope.
 
@@ -45,7 +45,7 @@ Every provider integration must have tests for whichever of these apply:
 - Inject the provider client; the **production path must go through the same seam** the test does. Monkeypatching the module under test creates a green suite over a broken app.
 - Prefer a **fake with a contract test** against the real provider's documented behavior over an ad-hoc mock that returns whatever makes the test pass.
 - **Live provider calls cost money and are separately authorized.** Default test runs must never hit a paid API. If a contract test needs live access, gate it behind an explicit env flag and say so on the ticket.
-- Record the provider's real error shapes (rate limit, auth failure, 5xx) and test your handling of each: retried, surfaced, or degraded â€” the ticket's invariants say which.
+- Record the provider's real error shapes (rate limit, auth failure, 5xx) and test your handling of each: retried, surfaced, or degraded — the ticket's invariants say which.
 
 ## Invariants to state on the ticket
 
@@ -58,7 +58,7 @@ A provider ticket's invariants should pin, concretely:
 - Tenancy boundary
 - Whether any test path may spend money
 
-"Handles errors gracefully" is not an invariant. `On 429, retry 3Ã— with exponential backoff to 8s, then surface a retryable error to the caller` is.
+"Handles errors gracefully" is not an invariant. `On 429, retry 3× with exponential backoff to 8s, then surface a retryable error to the caller` is.
 
 ## Verification
 
@@ -76,4 +76,4 @@ A provider ticket's invariants should pin, concretely:
 
 ## Related
 
-`ticket-implementation-tdd` Â· `invariant-evidence-review` Â· `part2` Â· `part3` Â· `controlled-ticket-delivery`
+`ticket-implementation-tdd` · `invariant-evidence-review` · `part2` · `part3` · `controlled-ticket-delivery`

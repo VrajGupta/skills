@@ -1,7 +1,7 @@
 ---
 name: shared-worktree-safety
 version: 1.0.0
-description: Invariants for working in a git checkout that another agent or human may be writing to at the same time â€” capture a baseline, preserve dirty paths you do not own, treat mid-run file changes as a concurrency signal, stage narrowly, and re-check ownership before every external write. Use whenever parallel agents, background tasks, or a human share one worktree, before any commit/push/tracker write in a shared tree, or when files change underneath you mid-run.
+description: Invariants for working in a git checkout that another agent or human may be writing to at the same time — capture a baseline, preserve dirty paths you do not own, treat mid-run file changes as a concurrency signal, stage narrowly, and re-check ownership before every external write. Use whenever parallel agents, background tasks, or a human share one worktree, before any commit/push/tracker write in a shared tree, or when files change underneath you mid-run.
 ---
 
 # shared-worktree-safety
@@ -38,7 +38,7 @@ If your change genuinely requires touching one, **stop and report the collision*
 A file that changed since you read it means **someone else is working**. Do not blindly apply your edit over a stale read.
 
 ```
-detect change â†’ re-read the file â†’ re-evaluate whether your edit still applies
+detect change → re-read the file → re-evaluate whether your edit still applies
 ```
 
 If your edit no longer makes sense against the new content, that's a collision. Report it.
@@ -66,17 +66,17 @@ Before each one, re-verify the world hasn't moved:
 
 External writes are the ones you cannot undo cheaply. Check immediately before, not at the start of the run.
 
-### 6. If someone else already finished it â€” verify, do not duplicate
+### 6. If someone else already finished it — verify, do not duplicate
 
 Discovering the work is already done is a **success**, not a race to redo it.
 
-1. Verify their result â€” run the gate yourself.
+1. Verify their result — run the gate yourself.
 2. If it passes: comment your independent confirmation. **Do not repeat the external writes** (no duplicate state moves, no duplicate commits).
 3. If it fails: that's a finding. Report it; don't quietly rewrite over them.
 
-## Timeout â‰  lost work
+## Timeout ≠ lost work
 
-When a subagent or long task times out, **80â€“95% of its edits are usually already on disk.**
+When a subagent or long task times out, **80–95% of its edits are usually already on disk.**
 
 Do this:
 
@@ -95,7 +95,7 @@ Then typecheck and run the gate. Assess what actually landed, finish the remaind
 |---|---|
 | File mtime changed since your read | Another writer is active |
 | `git status` grew paths you didn't touch | Concurrent agent or human |
-| Your commit contains files you don't recognize | You staged too broadly â€” reset and redo |
+| Your commit contains files you don't recognize | You staged too broadly — reset and redo |
 | Ticket state changed under you | Someone else claimed it |
 | Gate passes but your change isn't in HEAD | You committed the wrong tree |
 
@@ -111,4 +111,4 @@ Then typecheck and run the gate. Assess what actually landed, finish the remaind
 
 ## Related
 
-`shared-worktree-delegation` Â· `parallel-subagent-implementation` Â· `subagent-batch-implementation`
+`shared-worktree-delegation` · `parallel-subagent-implementation` · `subagent-batch-implementation`

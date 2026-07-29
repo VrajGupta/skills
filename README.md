@@ -25,8 +25,9 @@ bin/vskills.js       the vskills CLI entrypoint (see "Installing with vskills" a
 src/             vskills's implementation
 test/            vskills's test suite (node --test)
 part1/           planning chain     (batch design grill -> spec -> tickets -> handoff)
-part2/           implementation     (next ticket -> TDD -> independent review -> handoff)
-part3/           review/loop-closer (four-net audit -> fix -> independent grade -> handoff)
+part2/           implementation     (next ticket -> TDD -> self-check -> handoff)
+part3/           debug/harden       (four-net audit -> red-team the corners -> fix -> handoff)
+part4/           grade/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
 push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
 pipeline/        the delivery-factory skills: tracker stage protocol, the three roles,
@@ -37,7 +38,25 @@ mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored b
 
 ## pipeline/ — running work as a factory
 
-`part1/2/3` are the chains you run. `pipeline/` is the machinery around them: how a
+`part1/2/3/4` are the chains you run, one per pipeline stage, each on a different
+model so no stage ever reviews its own work:
+
+```
+Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Grading Ready -> Grading -> Done
+   part1        |          part2         |             part3          |            part4
+```
+
+`part4` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
+invariants only, never the author's handoff — because a confident rationale from the
+author is the strongest thing that corrupts a review. A failed grade routes by *kind*
+(correctness -> Debugger Ready, missing scope or tests -> Coding, unbuildable ticket ->
+Planned), and a third failed grade escalates to a human instead of looping forever.
+
+The stage protocol itself lives in [`pipeline/linear-pipeline`](pipeline/linear-pipeline/SKILL.md):
+exact state names, who may move what, re-read after every write, whether GitHub stage
+labels are safe on a given repo, and how to run every stage with no tracker at all.
+
+`part1/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
 ticket moves between stages, who is allowed to move it, and what counts as proof.
 
 | Skill | Use when |

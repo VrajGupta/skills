@@ -150,6 +150,8 @@ Refs: LUL-123
 
 **One Linear item per agent run, oldest unblocked first.** Batching transitions in one sitting muddies evidence and ownership. Batch only when the user explicitly authorizes it — then apply `subagent-batch-implementation` / `parallel-subagent-implementation` with lanes and a parent-verified gate.
 
+**Draining a queue is serial, not a batch claim.** When the user asks a stage to work "all the issues" in its queue, that authorizes *repetition*, not *concurrency*: run the stage skill end-to-end on one item, move it out of the in-flight column, then re-query the board and take the next. Re-query every lap rather than caching the list — upstream stages and grader bounces change the queue while you work. At no moment should more than one item sit in `Coding`, `Debugging`, or `Grading` on your account. Those three columns answer exactly one question — *what is an agent touching right now* — and a batch claim destroys the answer while producing no extra throughput in a single-threaded run.
+
 ## 8. Stage entry points
 
 | Stage | Queue | Then load |

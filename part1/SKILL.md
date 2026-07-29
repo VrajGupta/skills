@@ -47,6 +47,15 @@ returns to **Planned** with its reason. When you pick up such a ticket, repair t
 ticket itself — re-grill the ambiguous decision if you must — and return it to
 **Agent Ready**. Don't just re-word it and send it back into the loop unchanged.
 
+### Draining the queue — repairing bounced tickets
+
+Planning an effort is one run. But `/part4` also routes unbuildable tickets back
+to **`Planned`**, and those form a queue you can drain: if the user asks you to
+fix the bounced tickets, handle them **one at a time** — repair the ticket, return
+it to `Agent Ready`, then re-query the board and take the next. Re-query rather
+than caching, since a grader may add to that queue while you work. Report each
+ticket and its new state, one line each.
+
 ## Before you start
 
 Confirm what effort you're planning. If the user named it (a feature, an ADR, a

@@ -1,7 +1,7 @@
 ---
 name: part3
 version: 1.0.0
-description: Debugging and hardening chain — the third stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built: attacks weird inputs, failure modes, permission and tenant boundaries, verifies the /part1 invariants actually hold, audits test quality, and applies refactors — fixing everything test-first against the ticket's Verification-command, then moving the ticket to Grading Ready for /part4 to judge. Also runs in sweep mode over a whole directory to hunt bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo (idempotent). Use when the user runs /part3, wants agent-written code attacked before it can close, wants a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes its own bugs.
+description: Debugging and hardening chain — the third stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built: attacks weird inputs, failure modes, permission and tenant boundaries, verifies the /part1 invariants actually hold, audits test quality, and applies refactors — fixing everything test-first against the ticket's Verification-command, then moving the ticket to Grading Ready for /part4 to judge. Also runs in sweep mode over a whole directory to hunt bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo (idempotent). Use when the user runs /part3, wants agent-written code attacked before it can close, wants a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes its own bugs. Also use it when the user says to harden "all the issues" in Debugger Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
 # /part3 — Debugging chain (Debugger Ready → attacked → Grading Ready)
@@ -71,6 +71,28 @@ invariants planning docs, ADRs) and the **newest handoff**, so the audit is grou
 in the project's real constraints — not guesses. Note the project's **test command**,
 **test globs**, and the **gate command** shape it already uses (defer tracker / label /
 doc conventions to the sub-skills — keep this orchestrator project-agnostic).
+
+### Draining the queue — "debug all of them"
+
+One ticket per run is the default. When the user asks for the whole queue ("harden
+everything in Debugger Ready"), repeat this skill **end-to-end, serially**: claim
+one ticket, run Steps 1–3 on it, land it in `Grading Ready`, then start again from
+`Before you start` for the next. Do not claim the batch and do not merge several
+tickets' repairs into one undifferentiated diff — `/part4` grades per ticket, and a
+diff spanning five tickets is one it cannot attribute.
+
+Two habits make this loop reliable:
+
+- **Re-query the board between tickets, never cache the list.** `/part2` may push
+  new work into `Debugger Ready` while you're mid-audit, and `/part4` may bounce a
+  correctness failure back into it — those belong in the loop.
+- **One ticket in `Debugging` at any moment.** Step 0's agent bootstrap happens
+  once for the whole run, not once per ticket; only Steps 1–3 repeat.
+
+Stop when the queue comes back empty, when the budget is spent, or when a ticket
+blocks hard. Then report each ticket, what broke, and where it landed — one line
+each. If `Debugger Ready` is empty at the start, say so and offer sweep mode
+instead of inventing tickets.
 
 ## Step 0 — Ensure the personalized agent (idempotent; mini /part1 + /part2)
 
@@ -192,6 +214,9 @@ reach it** and out again as you finish, never claiming the batch up front.
   `Grading Ready` when the gate is green, updating Linear status + Linear label +
   GitHub label together every time — and **only for the ticket you're working**, never
   the queue. See `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **Drain the queue serially when asked for "all of them"** — Steps 1–3 per
+  ticket, re-query the board between laps, never more than one ticket in
+  `Debugging` at a time.
 - **Never grade your own fixes.** You repaired this code, so you are its author now —
   `/part4` judges it, blind and on another model. Move the ticket to `Grading Ready`;
   never to `Done`.

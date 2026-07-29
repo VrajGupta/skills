@@ -1,7 +1,7 @@
 ---
 name: part2
 version: 1.0.0
-description: Implementation chain and the build stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /part2, wants to pick up and implement the next ready ticket, or needs to build a ticket that /part4 bounced back for a missing acceptance criterion or a missing test.
+description: Implementation chain and the build stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /part2, wants to pick up and implement the next ready ticket, or needs to build a ticket that /part4 bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
 # /part2 — Implementation chain (next ticket → TDD → pushed handoff)
@@ -75,6 +75,32 @@ git history. If the latest handoff explicitly names the next ticket, trust that
 and verify its blockers are satisfied. If two tickets are equally ready, prefer
 the one the spec marks as the critical path. **State which ticket you picked and
 why before building.** If nothing is unblocked, say so and stop.
+
+### Draining the queue — "build all of them"
+
+One ticket per run is the default, because thin slices keep handoffs reviewable.
+When the user asks for the whole queue ("pick up everything in Agent Ready",
+"work through them all"), that is a request to **repeat this skill end-to-end,
+serially** — not to claim the queue or build several tickets into one diff. Run
+Steps 1–4 to completion on one ticket, land it in `Debugger Ready`, then start
+again from Step 1 for the next.
+
+Two habits make this loop reliable:
+
+- **Re-query the board between tickets, never cache the list.** The frontier
+  changes as you go: finishing ticket 12 may unblock ticket 15, and `/part4` may
+  have bounced something back into `Agent Ready` while you built. Ask the tracker
+  again each lap and re-apply the selection rule to fresh data.
+- **One ticket in `Coding` at any moment.** Move it in when you start, out when
+  the gate is green, and only then claim the next. That column answers "what is an
+  agent touching right now"; a batch claim destroys the only question it exists to
+  answer.
+
+Stop the loop when nothing is left unblocked, when the user's budget is spent, or
+when a ticket blocks hard (gate can't go green within budget, auth failure). Then
+report each ticket built and where it landed — one line each. If `Agent Ready` is
+empty at the start, say so and stop rather than reaching into `Planned` for work
+that hasn't been promoted.
 
 ## Step 2 — Lock the gate, then build it test-first
 
@@ -159,7 +185,9 @@ and report the blocking failure rather than thrashing.
   and `/part4`, on other models, for a reason — a checker in your context shares
   your blind spots. Keep the Step 3 self-check narrow.
 - Implement **one ticket per run** unless the user asks for more — thin slices
-  keep handoffs clean and reviewable.
+  keep handoffs clean and reviewable. When they do ask for more, drain the queue
+  **serially**: full skill per ticket, re-query the board between laps, never more
+  than one ticket in `Coding` at a time.
 - Be honest in the handoff about partial work **and unfixed edge cases**, so the
   next session knows the true state.
 - Defer project-specific conventions to the sub-skills; keep this orchestrator

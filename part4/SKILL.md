@@ -1,7 +1,7 @@
 ---
 name: part4
 version: 1.0.0
-description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a ticket from Grading Ready, moves it to Grading on both Linear and GitHub, reads ONLY the diff plus the ticket and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass closes the ticket to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing.
+description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a ticket from Grading Ready, moves it to Grading on both Linear and GitHub, reads ONLY the diff plus the ticket and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass closes the ticket to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the whole Grading Ready queue or "all the issues" — it finds them on the board itself and drains them one at a time.
 ---
 
 # /part4 — Grading chain (Grading Ready → judged → Done or bounced back)
@@ -59,6 +59,36 @@ stop — do not invent work.
 **Move that one ticket to `Grading` now**, before reading the diff, so the board
 shows a grade in progress. Move nothing else: claiming the whole `Grading Ready`
 queue would mark six tickets as under judgment while one actually is.
+
+### Draining the queue — "grade all of them"
+
+One ticket per run is the default. When the user asks for the whole queue ("grade
+everything in Grading Ready", "pick them all up"), do not reinterpret that as
+grading them in parallel or claiming them as a batch. Run the **entire** skill —
+claim, gate, judge, route, comment — to completion on one ticket, then start over
+from `Before you start` for the next. The board should never show more than one
+ticket in `Grading` because of you.
+
+Two habits make this loop reliable:
+
+- **Re-query the queue between tickets, never cache it.** The list you fetched at
+  the start is already stale — `/part3` may have pushed new work into `Grading
+  Ready` while you graded, and a ticket you bounced could have come back. Ask the
+  tracker again each lap and take the lowest-numbered ticket that is still there.
+- **Route each ticket before touching the next.** A verdict that hasn't moved its
+  ticket isn't delivered, and a half-finished lap left in `Grading` blocks the
+  fleet on a ticket nobody is actually judging.
+
+Stop the loop when the queue comes back empty, when the user's budget is spent,
+or when something blocks the run outright (auth failure, a red gate you cannot
+even execute). Then report every ticket you graded, its verdict, and where it
+landed — one line each. **If the queue is empty at the very start, say so and
+stop.** An empty queue means the fleet is caught up, not that you should go find
+something else to judge.
+
+The same shape applies to every stage: the queue is discovered from the board, not
+from the user, and it is drained one ticket at a time with exactly one ticket
+claimed at any moment.
 
 Then gather exactly three things, and deliberately nothing else:
 
@@ -250,6 +280,9 @@ anywhere in the loop — the one thing this skill exists to provide.
   grading**. See `~/.claude/skills/linear-pipeline/SKILL.md`.
 - **Only you may set `Done`.** No other stage closes tickets; don't let one talk
   you into treating its handoff as a verdict.
+- **Drain the queue serially when asked for "all of them"** — full skill per
+  ticket, re-query the board between laps, never more than one ticket in
+  `Grading` at a time.
 - **Escalate at bounce 3.** Three failed grades is a human problem; another lap
   won't find it.
 - **Never fix what you grade.** Findings and routing only.

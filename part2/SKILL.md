@@ -1,19 +1,60 @@
 ---
 name: part2
-version: 1.0.0
-description: Implementation chain — read the project's docs, pick the next unblocked ticket, build it test-first, red-team it, then write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → red-team pass (which also covers refactor smells) → handoff → push-handoff. The red-team pass attacks weird inputs, failure modes, and permission edges and verifies the /part1 invariants before handoff. Use when the user runs /part2, or wants to pick up and implement the next ready ticket and push a handoff.
+version: 1.1.0
+description: Implementation chain and the build stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /part2, wants to pick up and implement the next ready ticket, or needs to build a ticket that /part4 bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
 # /part2 — Implementation chain (next ticket → TDD → pushed handoff)
 
 Orchestrate the build-and-hand-off loop: figure out what to work on from the
-docs, implement it test-first, **red-team it against the corners**, then hand off.
-This is the counterpart to `/part1` (which produces the tickets — and the
-invariants — this skill consumes and must verify).
+docs, implement it test-first against a machine-checkable gate, self-check the
+obvious corners, then pass it down the line. This is the counterpart to `/part1`
+(which produces the tickets — and the invariants — this skill consumes).
+
+## Your place in the fleet loop
+
+The fleet is a pipeline on the project's board, one skill per stage, each stage
+run by a **different model** so that no stage ever reviews its own work:
+
+```
+Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done
+   └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
+```
+
+**Your board moves:** claim from **`Agent Ready`** → **`Coding`** before writing
+any code → **`Debugger Ready`** when the gate is green. Each move sets the Linear
+status, the matching Linear label, and the matching GitHub label — all three, old
+state label removed — and applies to **only the one ticket you are building**;
+the rest of `Agent Ready` stays untouched. Read
+`~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics — including
+the GitHub label-mirror canary, the read-back-after-write rule, and the
+**no-tracker fallback**.
+
+**No Linear or GitHub? The build still runs in full.** Take the next ticket from
+the project's local tracker or the newest handoff, build it test-first against the
+same gate, self-check the same way, and record where it ended up in the handoff.
+Say which mode you're in. A missing label is a bookkeeping gap; a skipped test is
+a defect that ships.
+
+You are the **maker**, and deliberately not the checker. `/part3` will attack what
+you build and `/part4` will judge whether it may close — both on different models,
+precisely so they don't inherit your blind spots. That division is the reason to
+build honestly rather than defensively: you cannot talk the judge into a pass (it
+never reads your handoff), and hiding a stub only wastes a downstream stage's
+budget rediscovering it. Your job is a green gate and an honest report of what
+isn't finished.
+
+You may also be handed a ticket **bounced back from `/part4`** — routed to Agent
+Ready because an acceptance criterion was unimplemented or an invariant had no
+covering test. Read the grade comment on the ticket first: it names the exact
+defect and the bounce count. Fix *that*, not the whole ticket again.
 
 ## Step 1 — Read the docs and pick the next ticket
 
 Read, in roughly this order (use whatever the repo actually has):
+0. A **retrieval router** (`ROUTER.md` beside the docs), if one exists — it maps
+   question → index, so you open two or three files instead of the tree. Its
+   `state.md` also carries what the last session left behind.
 1. The **newest handoff** doc — it usually records what's already done and names
    the next ticket to start.
 2. The project's **glossary / domain docs** — use this vocabulary everywhere.
@@ -21,14 +62,48 @@ Read, in roughly this order (use whatever the repo actually has):
    candidate's **Blocked by** section and **acceptance criteria**.
 4. The relevant **spec / plans** and **ADRs** for the ticket's area.
 
-**Selection rule:** pick the **lowest-numbered ticket that is not yet done and
-whose every Blocked-by ticket *is* done.** On a real tracker, prefer querying the
+**Selection rule:** pick the **lowest-numbered ticket in Agent Ready whose every
+Blocked-by ticket is done.** Prefer a ticket carrying a `/part4` grade comment
+(a bounce) over a fresh one — bounced work is already half-built and blocking a
+close. **Move that one ticket to `Coding` before you write any code** — Linear
+status + Linear label + GitHub label, with the `Agent Ready` label removed — so
+the board shows what's in flight. A ticket being worked on while it still reads
+`Agent Ready` is invisible, and a second run will claim it and build the same
+thing twice. **Move only that ticket:** the rest of the `Agent Ready` queue stays
+exactly where it is. Dragging the queue into `Coding` claims work nobody is doing
+and hides the one ticket that's actually live. On a real tracker, prefer querying the
 frontier (tickets whose blockers are all closed) directly over rebuilding it by
 eye. Determine "done" from the newest handoff (what it reports complete) and the
 git history. If the latest handoff explicitly names the next ticket, trust that
 and verify its blockers are satisfied. If two tickets are equally ready, prefer
 the one the spec marks as the critical path. **State which ticket you picked and
 why before building.** If nothing is unblocked, say so and stop.
+
+### Draining the queue — "build all of them"
+
+One ticket per run is the default, because thin slices keep handoffs reviewable.
+When the user asks for the whole queue ("pick up everything in Agent Ready",
+"work through them all"), that is a request to **repeat this skill end-to-end,
+serially** — not to claim the queue or build several tickets into one diff. Run
+Steps 1–4 to completion on one ticket, land it in `Debugger Ready`, then start
+again from Step 1 for the next.
+
+Two habits make this loop reliable:
+
+- **Re-query the board between tickets, never cache the list.** The frontier
+  changes as you go: finishing ticket 12 may unblock ticket 15, and `/part4` may
+  have bounced something back into `Agent Ready` while you built. Ask the tracker
+  again each lap and re-apply the selection rule to fresh data.
+- **One ticket in `Coding` at any moment.** Move it in when you start, out when
+  the gate is green, and only then claim the next. That column answers "what is an
+  agent touching right now"; a batch claim destroys the only question it exists to
+  answer.
+
+Stop the loop when nothing is left unblocked, when the user's budget is spent, or
+when a ticket blocks hard (gate can't go green within budget, auth failure). Then
+report each ticket built and where it landed — one line each. If `Agent Ready` is
+empty at the start, say so and stop rather than reaching into `Planned` for work
+that hasn't been promoted.
 
 ## Step 2 — Lock the gate, then build it test-first
 
@@ -49,46 +124,48 @@ and report the blocking failure rather than thrashing.
    not part of this step** — it's handled by Step 3's `/code-review` pass, so keep
    this loop to red→green only.
 
-## Step 3 — Red-team the build (the "adult in the room" pass)
+## Step 3 — Self-check, then hand the ticket down the line
 
-6. **Red-team pass (fresh eyes — separate context).** **before** handing off,
-   deliberately try to break what you just built. Run this pass as a **separate
-   checker that did not write the code** — spawn an `Explore`/`general-purpose`
-   sub-agent or run `/code-review` over the diff — so the judge can't inherit the
-   author's blind spots and rubber-stamp its own work (maker ≠ checker). This is
-   also where **refactoring** happens now (deferred out of the TDD loop per
-   Step 2): have the checker flag refactor smells — mysterious names, duplicated
-   code, feature envy, data clumps, primitive obsession, repeated switches,
-   divergent change, speculative generality, message chains, middleman — alongside
-   correctness. Do **not** re-run the happy path; attack the corners that
-   agent-written code usually fails in:
-   - **Weird inputs** — empty, null, oversized, wrong-type, malformed, duplicate,
-     unicode/injection, out-of-range, and concurrent/racing requests.
-   - **Failure modes** — exactly the ones named in the ticket's invariants: each
-     dependency down, slow, rate-limited, or returning garbage. Confirm the code
-     degrades/retries/surfaces as specified instead of crashing or hanging.
-   - **Permission & boundary edges** — wrong user, missing/expired/forged token,
-     privilege escalation, accessing another tenant's data, the trust edges the
-     `/part1` invariants drew.
-   Then **verify the `/part1` invariants actually hold** (latency budget,
-   failure-mode behavior, security boundaries) — don't assume the happy-path tests
-   covered them. Fix what breaks **test-first** (add the failing case, then the fix,
-   keep the suite green); apply refactor findings directly. **After every fix,
-   re-run the Step 2 gate command and re-run this checker pass** — a fix is not
-   accepted until the full gate passes again, so a corner-fix can't silently
-   regress a neighbor. Loop maker→checker until the gate is green or the budget is
-   exhausted. If a gap is genuinely out of scope for this ticket, record it
-   **honestly** as a follow-up in the handoff rather than hiding it. This is the
-   step where you are the skeptic, not the author.
+6. **Self-check (cheap, scoped — not a full red-team).** The deep adversarial
+   pass belongs to `/part3` and the verdict belongs to `/part4`, both on different
+   models. Duplicating that work here wastes your budget on findings a fresh pair
+   of eyes will make anyway, and — worse — a checker running in your own context
+   inherits your blind spots and issues a confident all-clear. So keep this pass
+   narrow and mechanical, covering only what's embarrassing to pass downstream:
+   - **Every acceptance criterion, enumerated.** Walk them one at a time and name
+     the line of code and the test that satisfies each. Missing one is the single
+     most common reason `/part4` bounces a ticket back to you.
+   - **Every named invariant has a test that would go red if it broke.** Not "the
+     suite is green" — a specific test per invariant. An invariant with no
+     covering test is an unfinished ticket, not a follow-up.
+   - **The obvious corners** for what you touched: empty/null input, the external
+     dependency erroring, the second identical call (idempotency). One test each.
+   - **The gate is green** — the Step 2 command exits 0, suite and typecheck and
+     lint included.
+
+   Fix what this finds **test-first**, and re-run the gate after each fix so a
+   corner-fix can't silently regress a neighbor. Do **not** start refactoring —
+   `/part3` owns that pass, and a refactor riding along inside a feature diff
+   makes the diff harder for it to review.
+
+7. **Move the ticket to `Debugger Ready`** — status + Linear label + GitHub label,
+   `Coding` label removed. This is what "done building" means at this stage — not
+   `Done`, and not a judgment call you get to make. Leaving it in `Coding` after
+   you finish is the same bug as never moving it there: the column stops meaning
+   "an agent is on this right now." If something is
+   genuinely stubbed, in-memory, or unwired, it still moves, but say so plainly in
+   the handoff. Hiding it doesn't get it past the next stage; it just makes the
+   next stage spend its budget finding out.
 
 ## Step 4 — Hand off and push (both required)
 
-7. **`handoff`** — write a handoff doc (project's usual location + the `$TMPDIR`
-   copy): what was built, which ticket it completed, the green-test state, **what
-   the red-team pass tried and what it found** (including any unfixed edge cases
-   and refactor findings), honest follow-ups (anything stubbed/in-memory/not-yet-
-   wired), and the **next** ready ticket.
-8. **`push-handoff`** — **always run this last.** Read and follow the
+8. **`handoff`** — write a handoff doc (project's usual location + the `$TMPDIR`
+   copy): what was built, which ticket it moved to Debugger Ready, the green-gate
+   state, **what the self-check covered and what it found**, honest follow-ups
+   (anything stubbed/in-memory/not-yet-wired), and the **next** ready ticket.
+   Write this for the *human* and for `/part3` — `/part4` will never read it, by
+   design, so nothing here can substitute for a criterion actually being met.
+9. **`push-handoff`** — **always run this last.** Read and follow the
    **`push-handoff`** skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the
    handoff doc + all changed code/CONTEXT artifacts, commit, and push to the
    configured remote. **`/part2` is not complete until push succeeds** (or you
@@ -97,16 +174,28 @@ and report the blocking failure rather than thrashing.
 ## Rules
 
 - Run the skills **sequentially**; finish each before the next — **build →
-  red-team → `handoff` → `push-handoff`**, every time.
-- **Never skip the red-team pass to save time.** A green happy-path suite is not
-  "done" — corners, invariants, and refactor smells are where agent-written code
-  fails. No handoff before the red-team pass has run.
+  self-check → move to Debugger Ready → `handoff` → `push-handoff`**, every time.
+- **Move the ticket on the board**: `Agent Ready` → `Coding` when you start →
+  `Debugger Ready` when the gate is green, updating Linear status + Linear label +
+  GitHub label together every time. The board is the fleet's shared memory; work
+  that doesn't move on it is invisible to the next stage. See
+  `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **One ticket moves, not the queue.** Only the ticket you're actually building
+  enters `Coding`; everything else stays idle where it is.
+- **You never mark anything Done.** Only `/part4` closes tickets. A green suite is
+  evidence, not a verdict.
+- **Don't red-team or refactor your own diff.** Those passes belong to `/part3`
+  and `/part4`, on other models, for a reason — a checker in your context shares
+  your blind spots. Keep the Step 3 self-check narrow.
 - Implement **one ticket per run** unless the user asks for more — thin slices
-  keep handoffs clean and reviewable.
+  keep handoffs clean and reviewable. When they do ask for more, drain the queue
+  **serially**: full skill per ticket, re-query the board between laps, never more
+  than one ticket in `Coding` at a time.
 - Be honest in the handoff about partial work **and unfixed edge cases**, so the
   next session knows the true state.
 - Defer project-specific conventions to the sub-skills; keep this orchestrator
   project-agnostic.
-- End with a short summary: the ticket completed, the test state, **the red-team
-  findings (including refactors applied)**, follow-ups, the **pushed commit
-  hash**, and the remote branch — omitting push means the run failed.
+- End with a short summary: the ticket built and **the state you moved it to**,
+  the gate result, the self-check findings, follow-ups, the **pushed commit
+  hash**, and the remote branch — omitting the state move or the push means the
+  run failed.

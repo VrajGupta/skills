@@ -1,7 +1,7 @@
 ---
 name: part1
-version: 1.0.0
-description: Planning chain — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /part1, or wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass.
+version: 1.1.0
+description: Planning chain and the first stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets that land on the board in Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /part1, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /part4 bounced back as unbuildable.
 ---
 
 # /part1 — Planning chain (idea → spec → tickets → pushed handoff)
@@ -11,6 +11,51 @@ each, with an explicit invariants gate before the spec. This is the repeatable
 "plan the next effort and hand it off" loop. Do **not** write any application code
 in this skill — it produces planning artifacts only.
 
+## Your place in the fleet loop
+
+The fleet is a pipeline on the project's board, one skill per stage, each stage
+run by a **different model** so that no stage ever reviews its own work:
+
+```
+Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done
+   └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
+```
+
+**Your board moves:** create tickets in **`Planned`**, then move each to
+**`Agent Ready`** the moment its blockers are satisfied. Every move sets the
+Linear status, the matching Linear label, and the matching GitHub label — all
+three, old state label removed. Read
+`~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics; it is the
+shared state machine all four stages obey — including the GitHub label-mirror
+canary, the read-back-after-write rule, and the **no-tracker fallback**.
+
+**No Linear or GitHub? The chain still runs in full.** The trackers are where
+state is *recorded*, not what makes the planning correct. With neither available,
+grill, lock invariants, and write tickets exactly as below — into the project's
+local tracker (`tickets.md`) or the handoff — and just say which mode you're in.
+Never skip planning work because a label couldn't be written.
+
+`/part1` **opens** the loop. Everything downstream — the gate `/part2` builds
+against, the invariants `/part3` attacks, the criteria `/part4` grades — comes
+from the tickets you write here. A vague ticket doesn't fail at planning time; it
+fails three stages later as a ticket that bounces forever because no one can tell
+whether it's satisfied. Write for those three readers.
+
+`/part4` can also send work **back** here: a ticket it judges unbuildable (contra-
+dictory criteria, no runnable `Verification-command`, an unsatisfiable invariant)
+returns to **Planned** with its reason. When you pick up such a ticket, repair the
+ticket itself — re-grill the ambiguous decision if you must — and return it to
+**Agent Ready**. Don't just re-word it and send it back into the loop unchanged.
+
+### Draining the queue — repairing bounced tickets
+
+Planning an effort is one run. But `/part4` also routes unbuildable tickets back
+to **`Planned`**, and those form a queue you can drain: if the user asks you to
+fix the bounced tickets, handle them **one at a time** — repair the ticket, return
+it to `Agent Ready`, then re-query the board and take the next. Re-query rather
+than caching, since a grader may add to that queue while you work. Report each
+ticket and its new state, one line each.
+
 ## Before you start
 
 Confirm what effort you're planning. If the user named it (a feature, an ADR, a
@@ -18,6 +63,11 @@ spec, a one-shot prompt), use that as the subject. If not, ask one question:
 "What effort am I grilling?" Then read the project's existing planning docs
 (whatever the repo uses — e.g. a glossary/`CONTEXT.md`, the newest handoff,
 related plans and ADRs) so the grill is grounded in current decisions.
+
+**If the repo has a retrieval router** (`ROUTER.md` beside its docs), read it
+first and let it route you to the right index — score candidates from index
+lines before opening anything. Reading the whole docs tree when a router exists
+burns the context you need for the grill itself.
 
 ## Step 0 — Size the effort (the `/wayfinder` gate)
 
@@ -75,7 +125,7 @@ call, ask the user rather than silently picking.
      exposed to whom, and the blast radius if a boundary is crossed.
    This is the "adult in the room" step: without it the plan optimizes for "finish,"
    not "safe." Carry these invariants forward so `to-spec` and `to-tickets` both honor
-   them and so **`/part2`'s red-team pass has concrete targets to attack.**
+   them and so **`/part3`'s red-team pass has concrete targets to attack** and so `/part4` has something falsifiable to grade against.
 3. **`to-spec`** — synthesize the grilled decisions **and the locked invariants** into
    a spec (do **not** re-interview). The spec must state the invariants as explicit
    acceptance constraints, not leave them implicit. Publish it to wherever the project
@@ -89,7 +139,20 @@ call, ask the user rather than silently picking.
    tsc --noEmit`) that exits 0 exactly when the ticket is complete** — so `/part2`
    has a concrete gate to loop its maker→checker pass against instead of judging
    "done" by eye. Quiz the user on the breakdown, then publish each ticket with
-   What-to-build / Acceptance-criteria / **Verification-command** / Blocked-by.
+   What-to-build / Acceptance-criteria / **Verification-command** / Blocked-by,
+   then set its board state: create it in **`Planned`** (status + `Planned` label
+   on both Linear and GitHub), and move it to **`Agent Ready`** — swapping the
+   label on both trackers — if every Blocked-by ticket is already done. A ticket
+   with unsatisfied blockers **stays in `Planned`**; that queue is exactly the set
+   of work that isn't claimable yet, and putting blocked tickets in `Agent Ready`
+   makes `/part2` pick up work it can't finish.
+   **Write acceptance criteria so a blind grader can check them.** `/part4` judges
+   the diff against this ticket *without* reading the author's handoff or
+   rationale, so each criterion must be checkable from code and tests alone.
+   "Handles errors gracefully" gives the grader nothing to verify and guarantees a
+   bounce; "on provider 5xx, retries twice then marks the Brief `failed` with
+   reason `provider_unavailable`" is checkable. One observable behavior per
+   criterion — no compound "and"s that can be half-satisfied and argued about.
    **On a real tracker (e.g. GitHub), publish for real, always** — creating a local
    ticket file is not publishing, and where the tracker supports it, set
    "Blocked-by" as a **native blocking link** so the frontier (tickets whose
@@ -139,6 +202,10 @@ call, ask the user rather than silently picking.
   issue (`gh issue create`) with native Blocked-by links where supported; a local
   markdown mirror alone does not count as published. On a local-file-tracker
   project, `tickets.md` **is** the tracker, so writing it there is publishing.
+- **State lives in three places** — Linear status, Linear label, GitHub label —
+  and they must agree; move all three or none. See
+  `~/.claude/skills/linear-pipeline/SKILL.md`.
 - End with a short summary: the spec location, the **ticket numbers/URLs (or
-  `tickets.md` location)**, the **pushed commit hash**, and the remote branch —
-  omitting the tickets or the push means the run failed.
+  `tickets.md` location)**, **which tickets landed in `Planned` vs `Agent Ready`**,
+  the **pushed commit hash**, and the remote branch — omitting the tickets, their
+  states, or the push means the run failed.

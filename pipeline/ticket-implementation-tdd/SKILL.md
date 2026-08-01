@@ -64,7 +64,7 @@ Sweep for junk before finishing: duplicate `file 2.ts` artifacts, stray console 
 ## Step 7 — Evidence
 
 ```
-Implemented LUL-###.
+Implemented <owner>/<repo>#<issue-number>.
 Paths: <list>
 Gate: `<cmd>`
 Output:

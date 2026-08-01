@@ -17,7 +17,7 @@ The issue tracker and triage label vocabulary should have been provided to you â
 
 Check with the user that these seams match their expectations.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. Write the spec using the template below, then publish it to the project issue tracker. On GitHub Projects, create or update the GitHub issue, add it to the configured project, and set the Project `Status` field; use `ready-for-agent` only as optional triage metadata.
 
 <spec-template>
 

@@ -21,19 +21,27 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
    └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
 ```
 
-**Your board moves:** create tickets in **`Planned`**, then move each to
-**`Agent Ready`** the moment its blockers are satisfied. Every move sets the
-Linear status, the matching Linear label, and the matching GitHub label — all
-three, old state label removed. Read
-`~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics; it is the
-shared state machine all four stages obey — including the GitHub label-mirror
-canary, the read-back-after-write rule, and the **no-tracker fallback**.
+### Stage-parent session
 
-**No Linear or GitHub? The chain still runs in full.** The trackers are where
-state is *recorded*, not what makes the planning correct. With neither available,
-grill, lock invariants, and write tickets exactly as below — into the project's
-local tracker (`tickets.md`) or the handoff — and just say which mode you're in.
-Never skip planning work because a label couldn't be written.
+The default planner is Opus 5 in the Claude Code harness using the Claude
+subscription. GPT-5.6 Luna may dispatch it as a headless child after all planning
+decisions are supplied, or the human may run it in a visible Claude Code session.
+Because the grill is interactive, a headless child cannot ask the user. `/part1` may
+use one-level helpers only when it is the independent top-level stage parent; a
+native child launched from another session must not spawn nested children.
+
+**Your board moves:** create GitHub issues in the project's **`Planned`** Status,
+then move each project item to **`Agent Ready`** the moment its blockers are
+satisfied. The GitHub Project item's `Status` field is canonical; labels are
+metadata only. Read `~/.claude/skills/github-projects-pipeline/SKILL.md` for the
+exact `gh project` mechanics, live field/option IDs, read-back-after-write rule,
+and **no-project fallback**.
+
+**No GitHub Project? The chain still runs in full.** The project is where state is
+recorded, not what makes planning correct. With no project available, grill, lock
+invariants, and write tickets into the project's local tracker (`tickets.md`) or
+the handoff; say which mode you're in. Never skip planning work because a project
+field could not be written.
 
 `/part1` **opens** the loop. Everything downstream — the gate `/part2` builds
 against, the invariants `/part3` attacks, the criteria `/part4` grades — comes
@@ -129,8 +137,8 @@ call, ask the user rather than silently picking.
 3. **`to-spec`** — synthesize the grilled decisions **and the locked invariants** into
    a spec (do **not** re-interview). The spec must state the invariants as explicit
    acceptance constraints, not leave them implicit. Publish it to wherever the project
-   keeps specs / its issue tracker, with the project's "ready for agent" triage
-   label/convention.
+   keeps specs and publish the ticket to the GitHub Project with its `Status` field
+   set to the exact workflow option.
 4. **`to-tickets`** — break the spec into dependency-ordered vertical tracer-bullet
    tickets, continuing the project's existing numbering/tracker. Each ticket that
    touches an invariant must restate the relevant budget/failure-mode/boundary in its
@@ -140,9 +148,9 @@ call, ask the user rather than silently picking.
    has a concrete gate to loop its maker→checker pass against instead of judging
    "done" by eye. Quiz the user on the breakdown, then publish each ticket with
    What-to-build / Acceptance-criteria / **Verification-command** / Blocked-by,
-   then set its board state: create it in **`Planned`** (status + `Planned` label
-   on both Linear and GitHub), and move it to **`Agent Ready`** — swapping the
-   label on both trackers — if every Blocked-by ticket is already done. A ticket
+   then add it to the GitHub Project in **`Planned`** and move it to
+   **`Agent Ready`** if every `Blocked by` ticket is already done. Set the Project
+   `Status` field through `gh project`, then read the item back. A ticket
    with unsatisfied blockers **stays in `Planned`**; that queue is exactly the set
    of work that isn't claimable yet, and putting blocked tickets in `Agent Ready`
    makes `/part2` pick up work it can't finish.
@@ -153,20 +161,21 @@ call, ask the user rather than silently picking.
    bounce; "on provider 5xx, retries twice then marks the Brief `failed` with
    reason `provider_unavailable`" is checkable. One observable behavior per
    criterion — no compound "and"s that can be half-satisfied and argued about.
-   **On a real tracker (e.g. GitHub), publish for real, always** — creating a local
-   ticket file is not publishing, and where the tracker supports it, set
-   "Blocked-by" as a **native blocking link** so the frontier (tickets whose
-   blockers are all done) is queryable, not just readable text. For every slice on
-   GitHub, run `gh issue create --label <the project's ready-for-agent label>
-   --body-file <the ticket file>` (mirrored by whatever local `tickets.md`/`issues/`
-   file the project keeps), in dependency order so "Blocked-by" can name real
-   tickets. On a **local-file tracker**, append each ticket to `tickets.md` with its
+   **On GitHub Projects, publish for real, always** — creating a local ticket file
+   is not publishing. Create each GitHub issue, add it to the configured project, set
+   its Project `Status` to `Planned` or `Agent Ready` after checking blockers, and
+   use a native blocking/sub-issue link where the repository supports it. For every
+   slice, run `gh issue create --body-file <the ticket file>`, then
+   `gh project item-add <project-number> --owner <project-owner> --url <issue-url>`
+   and update the live `Status` field IDs described by `github-projects-pipeline`.
+   On a **local-file tracker**, append each ticket to `tickets.md` with its
    "Blocked by" edge written as text, in dependency order, so the team can work it
    top-to-bottom by hand. Tickets that live only as unpublished on-disk drafts are
    **not** done; the run must report the created ticket numbers/URLs (or the
-   `tickets.md` location, for the local-file case). If `gh` is unauthenticated on a
-   GitHub-tracked project, surface that as a blocker with the fix (`gh auth login`)
-   — do not silently fall back to local-only.
+   `tickets.md` location, for the local-file case). If `gh` is unauthenticated or
+   lacks the `project` scope on a GitHub Project, surface that as a blocker with
+   the fixes (`gh auth login` / `gh auth refresh -s project`) — do not silently
+   fall back to local-only.
 5. **`handoff`** — compact this session into a handoff doc (in the project's usual
    handoff location, plus the skill's `$TMPDIR` copy) as a pointer map: the locked
    decisions, **the invariants**, the slice order, and "next agent starts at ticket NN".
@@ -197,14 +206,15 @@ call, ask the user rather than silently picking.
   runnable done-condition isn't ready — resolve it before publishing.
 - Defer project-specific conventions (tracker format, repo, labels, doc paths) to
   the sub-skills, which already know them — keep this orchestrator project-agnostic.
-- **Tickets land on the real tracker, not just on disk.** On a GitHub-backed
+- **Tickets land on the real tracker, not just on disk.** On a GitHub Projects
   project, `to-tickets` is not complete until every slice exists as a real GitHub
-  issue (`gh issue create`) with native Blocked-by links where supported; a local
+  issue, is added to the project, and has a read-back-confirmed Project `Status`,
+  with native Blocked-by links where supported; a local
   markdown mirror alone does not count as published. On a local-file-tracker
   project, `tickets.md` **is** the tracker, so writing it there is publishing.
-- **State lives in three places** — Linear status, Linear label, GitHub label —
-  and they must agree; move all three or none. See
-  `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **State lives in one place** — the GitHub Project item's `Status` field. Labels
+  are metadata, not a second state machine. Move the project item and read it back
+  through `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - End with a short summary: the spec location, the **ticket numbers/URLs (or
   `tickets.md` location)**, **which tickets landed in `Planned` vs `Agent Ready`**,
   the **pushed commit hash**, and the remote branch — omitting the tickets, their

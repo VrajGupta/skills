@@ -61,12 +61,14 @@ type(scope): subject
 
 <body â€” why, not what>
 
-Refs: LUL-123
+Refs: #123
 ```
 
 `type` âˆˆ `feat` `fix` `test` `refactor` `docs` `chore`.
 
-The `Refs:` trailer is how the work attaches to the tracker. Omit it and the ticket loses its evidence trail.
+The `Refs:` trailer links the commit to the GitHub issue in the Project. Use
+`Refs: #123` in the same repository or `Refs: owner/repo#123` across repositories.
+Omit it and the ticket loses its evidence trail.
 
 ## Step 4 â€” Push and PROVE it
 

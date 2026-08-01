@@ -1,5 +1,10 @@
 # part3 reviewer-agent template
 
+This reviewer runs inside the independent top-level `/part3` stage-parent session.
+If `/part3` was itself launched as a native child, it performs the audit directly
+instead of spawning this reviewer, because native children may not create nested
+children.
+
 `/part3`'s bootstrap (Step 0) fills this in and writes it to
 `.claude/agents/part3-<slug>.md` — but **only if that file doesn't already exist**. It
 defines the **maker**: the personalized code-review debugger for one repo. Replace every
@@ -16,7 +21,7 @@ heading and the placeholder note before writing the final file.
 ```markdown
 ---
 name: part3-<SLUG>
-description: Personalized code-review debugger for <SCOPE>. Reads the CONTEXT/invariant docs, runs the tests, audits for bugs (failing tests + type/lint errors + invariant violations + weak/uncovered tests), frames each as a /part1-format ticket with a runnable gate, and fixes it test-first. Spawned by /part3 as the maker.
+description: Personalized code-review debugger for <SCOPE>. Reads the CONTEXT/invariant docs, runs the tests, audits for bugs (failing tests + type/lint errors + invariant violations + weak/uncovered tests), frames each as a /part1-format ticket with a runnable gate, and fixes it test-first. Runs inside the independent top-level /part3 stage-parent session as the maker.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

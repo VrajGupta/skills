@@ -30,8 +30,9 @@ part3/           debug/harden       (four-net audit -> red-team the corners -> f
 part4/           grade/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
 push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
-pipeline/        the delivery-factory skills: tracker stage protocol, the three roles,
-                 shared-worktree safety, gated batch delivery, audit/recovery
+pipeline/        the delivery-factory skills: tracker stage protocol, the four roles,
+                 stage-parent harness profile, shared-worktree safety, gated batch delivery,
+                 audit/recovery
 mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored by category
                  (including in-progress/batch-grill-me)
 ```
@@ -52,17 +53,48 @@ author is the strongest thing that corrupts a review. A failed grade routes by *
 (correctness -> Debugger Ready, missing scope or tests -> Agent Ready, unbuildable ticket ->
 Planned), and a third failed grade escalates to a human instead of looping forever.
 
-The stage protocol itself lives in [`pipeline/linear-pipeline`](pipeline/linear-pipeline/SKILL.md):
-exact state names, who may move what, re-read after every write, whether GitHub stage
-labels are safe on a given repo, and how to run every stage with no tracker at all.
+### Stage-parent harness profile
+
+The fleet runs as a serial four-stage workflow. GPT-5.6 Luna is the overall
+coordinator; it may dispatch Opus 5 in the Claude Code harness for planning after
+planning decisions are supplied. Kimi, Codex, and Grok run as independent top-level
+stage-parent sessions for `/part2`, `/part3`, and `/part4`. A stage parent is the
+chat/session running its stage; it may coordinate one level of helpers when its
+harness supports that. A native child launched from another session must not spawn
+nested children.
+
+| Stage | Stage parent | Harness / route | Effort |
+|---|---|---|---|
+| `/part1` | Opus 5, Luna-dispatched or visible | Claude Code harness using the Claude subscription | medium/high |
+| `/part2` | Kimi K3 | Pi harness via OpenRouter | high |
+| `/part3` | GPT-5.6 Luna | Codex harness using the Codex subscription | **max** |
+| `/part4` | Grok 4.5 | Pi harness via OpenRouter | high/xhigh |
+
+Part2 may use Kimi K2.7 Code helpers and part3 may use reviewer helpers, but only
+inside their independent top-level stage-parent sessions. Part4's final grader must
+remain blind and may receive only the ticket, diff, gate, and invariant docs. The
+GitHub Project item, GitHub issue, git, and handoffs—not chat history—connect the
+stage parents. `max` is a reasoning
+setting, not part of a model name. A headless Opus child cannot conduct the
+interactive grill; use a visible Claude session or pass all decisions in advance.
+
+**Runtime choice:** super.engineering is the managed-workspace authority for
+worktrees, target/base branches, sessions, and reviews. Herdr is an optional local
+terminal multiplexer for visible, persistent agent panes. Herdr can run the separate
+stage-parent processes, but it does not replace GitHub Projects or git/GitHub, and
+it should not independently mutate a worktree managed by super.engineering. The two tools can
+coexist: super.engineering owns the workspace; Herdr provides process visibility.
+
+The stage protocol itself lives in [`pipeline/github-projects-pipeline`](pipeline/github-projects-pipeline/SKILL.md):
+exact Project `Status` options, who may move what, re-read after every write, how to
+use `gh project`, and how to run every stage with no project at all.
 
 `part1/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
 ticket moves between stages, who is allowed to move it, and what counts as proof.
 
 | Skill | Use when |
 |---|---|
-| `linear-pipeline` | Stage protocol — Linear is the write surface, GitHub issues read-only |
-| `linear-label-pipeline` | Operator manual: why a ticket didn't move, duplicates, label-vs-state |
+| `github-projects-pipeline` | Stage protocol — GitHub Project `Status` is canonical; issues hold tickets and evidence |
 | `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
 | `specialist-profiles` | Build/verify the planner, coder, debugger roles so maker != checker is structural |
 | `state-driven-pipeline-recovery` | The pipeline is thrashing or reporting false greens |
@@ -89,8 +121,9 @@ These four are meant to be run **as a pipeline**, in order, on the same repo:
    and dependency-ordered tickets, then push a handoff.
 2. **`/part2`** — pick up the next unblocked ticket, build it test-first, red-team
    it against the invariants `/part1` locked, then push a handoff.
-3. **`/part3`** — the loop-closer. Audits the directory for bugs/weak tests, fixes
-   them test-first, grades the fix with a fresh-eyes sub-agent, pushes a handoff.
+3. **`/part3`** — the loop-closer. The Codex Luna stage parent audits the directory
+   for bugs/weak tests, fixes them test-first, may use a fresh-eyes helper inside its
+   own top-level session, and pushes a handoff.
 4. **`/loop-engineer`** — wraps any of the above (or any coding task) in a closed
    maker -> checker loop with an explicit done-condition, so the agent iterates
    until the goal is verifiably met instead of stopping after one pass.

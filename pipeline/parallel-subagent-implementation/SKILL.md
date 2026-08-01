@@ -8,6 +8,11 @@ description: Implement several independent tickets at once using lane-assigned s
 
 The pipeline default is **one ticket per run**. This skill is the authorized exception. It does not relax any other rule.
 
+A stage parent is a separately launched top-level session. A native child may not
+spawn nested children. If a stage parent uses helpers, the parent still owns the
+lanes, gates, commits, and GitHub Project writes; separate stage-parent sessions
+remain serial across the GitHub Projects pipeline.
+
 ## Preconditions — all must hold
 
 - [ ] The user **explicitly authorized** parallel/batch work.
@@ -39,7 +44,7 @@ For each ticket, list the files/dirs it owns. Then check for overlap **explicitl
 Every worker gets the complete brief (see `shared-worktree-delegation`):
 
 ```
-TICKET: LUL-###
+TICKET: <owner>/<repo>#<issue-number>
 GOAL: <one sentence>
 YOUR LANE: <paths>
 DO NOT EDIT: <sibling lanes, listed explicitly>
@@ -71,8 +76,9 @@ Even though implementation was parallel, external writes are **serial and per-ti
 
 For each verified ticket, one at a time:
 1. Stage only that ticket's paths.
-2. Commit `type(scope): subject` + `Refs: LUL-###`.
-3. Comment evidence on the ticket (gate output verbatim, commit SHA).
+2. Commit `type(scope): subject` + `Refs: #<issue-number>` (or
+   `Refs: <owner>/<repo>#<issue-number>` across repositories).
+3. Comment evidence on the GitHub issue (gate output verbatim, commit SHA).
 4. Move that ticket Coding → Debugger Ready. **Re-read the state.**
 
 Never one giant commit spanning the batch. It destroys per-ticket traceability and makes bounces unrevertable.

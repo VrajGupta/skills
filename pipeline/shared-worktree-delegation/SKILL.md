@@ -8,6 +8,16 @@ description: Safely fan out subagent tasks into one shared git checkout — assi
 
 Delegating into a shared checkout is safe **only** with lanes and a gatekeeper parent. Without both, parallel agents overwrite each other and then gaslight the parent with partial greens.
 
+## Parent means a session, not a nested child
+
+A **stage parent** is a separately launched top-level chat/session running one
+pipeline stage. It may coordinate one level of helpers when its harness supports it.
+A native child launched from another session is not a stage parent and must not spawn
+nested children. The GitHub Project item, GitHub issue/PR artifacts, and handoffs
+bridge independent stage-parent sessions. The parent of every worker—whether the
+overall coordinator or
+a stage parent—must remain the gatekeeper and own external writes.
+
 ## Decide first: shared tree or isolated worktrees?
 
 | Use a shared tree | Use isolated worktrees (`isolation: "worktree"`) |

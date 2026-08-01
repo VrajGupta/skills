@@ -1,18 +1,23 @@
 ---
 name: subagent-batch-implementation
 version: 1.0.0
-description: Deliver an explicitly authorized RANGE of tickets in sequential waves, where each wave respects blocker ordering, the parent verifies every wave before starting the next, and a red wave halts the batch. Use when the user authorizes something like "do LUL-201 through LUL-208", when a plan's children must land in dependency order, or when a batch is too large or too coupled for a single parallel fan-out.
+description: Deliver an explicitly authorized RANGE of tickets in sequential waves, where each wave respects blocker ordering, the parent verifies every wave before starting the next, and a red wave halts the batch. Use when the user authorizes a GitHub issue range such as "do #201 through #208", when a plan's children must land in dependency order, or when a batch is too large or too coupled for a single parallel fan-out.
 ---
 
 # subagent-batch-implementation
 
 For an **authorized ticket range** where dependencies matter. Parallel fan-out (`parallel-subagent-implementation`) assumes independence; this skill assumes a **dependency graph** and delivers it in waves.
 
+A stage parent is a separately launched top-level session. A native child may not
+spawn nested children. Stage-parent sessions still run serially across GitHub
+Projects; only workers inside an explicitly authorized stage may fan out, with the parent holding
+every gate and external write.
+
 ## Step 0 â€” Authority and scope
 
 Restate the authorization back to the user before starting:
 
-> Batch authorized: LUL-201..208. Commit: yes. Push: <yes/no>. I will stop the batch on the first wave that fails its parent gate.
+> Batch authorized: <owner>/<repo>#201..#208. Commit: yes. Push: <yes/no>. I will stop the batch on the first wave that fails its parent gate.
 
 If push authority is unclear, assume **no push** and hand off instead.
 
@@ -29,9 +34,9 @@ Wave 3: ...
 Print the wave plan **before implementing**:
 
 ```
-Wave 1: LUL-201 (domain service), LUL-202 (API authz)   [disjoint lanes]
-Wave 2: LUL-203 (mobile surface)                        [blocked by 201, 202]
-Wave 3: LUL-204..206                                    [blocked by 203]
+Wave 1: #201 (domain service), #202 (API authz)       [disjoint lanes]
+Wave 2: #203 (mobile surface)                           [blocked by 201, 202]
+Wave 3: #204..206                                       [blocked by 203]
 ```
 
 Rules:
@@ -70,11 +75,11 @@ Halting is a **successful outcome** for the tickets already verified. Report exa
 ## Step 5 â€” Batch report
 
 ```
-Batch LUL-201..208
-Wave 1: LUL-201 âœ… <sha>  LUL-202 âœ… <sha>
-Wave 2: LUL-203 âœ… <sha>
-Wave 3: LUL-204 âŒ blocked â€” <reason + evidence>
-        LUL-205, 206 not started (blocked by 204)
+Batch <owner>/<repo>#201..#208
+Wave 1: #201 âœ… <sha>  #202 âœ… <sha>
+Wave 2: #203 âœ… <sha>
+Wave 3: #204 âŒ blocked â€” <reason + evidence>
+        #205, #206 not started (blocked by #204)
 Broad verify after last committed wave: <command> â†’ <result>
 States moved: 201,202,203 â†’ Debugger Ready (readback confirmed)
 ```
@@ -85,7 +90,8 @@ States moved: 201,202,203 â†’ Debugger Ready (readback confirmed)
 - One commit per ticket. Never one commit per wave.
 - Parent re-runs every gate.
 - Re-read state after every move.
-- No GitHub issue writes on synced repos.
+- Project item and issue writes are performed only by the parent, serially, with
+  readback after each mutation.
 
 ## Related
 

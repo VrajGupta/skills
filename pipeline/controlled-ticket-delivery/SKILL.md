@@ -18,7 +18,7 @@ Write them down before starting. An unnamed constraint gets violated.
 | **Spend authority** | Does this run call paid providers, deploy, or purchase? Spend is **always separately authorized.** |
 | **Migration** | Does this touch live data? Is it reversible? Is there a backup? Expand-then-contract available? |
 | **Git authority** | Commit allowed? Push allowed? Direct to branch, or PR only? Protected branches? |
-| **Tracker access** | Can you write Linear? If not, where does the handoff live? |
+| **Tracker access** | Can you write the GitHub Project? Does `gh auth` have the `project` scope? If not, where does the handoff live? |
 | **Time** | Hard deadline that changes the acceptable path? |
 
 State the resolved set back to the user in one block before implementing.
@@ -30,7 +30,7 @@ State the resolved set back to the user in one block before implementing.
 | Full authority, normal ticket | Standard `part2` |
 | No push authority | Implement + commit locally, write handoff, report. **Do not push.** |
 | No commit authority | Implement, verify, leave the tree dirty, write a handoff describing exactly what to stage |
-| No tracker write | **Local handoff file** (template below). Never substitute GitHub issue writes on a synced repo. |
+| No project write | **Local handoff file** (template below). Never substitute labels or issue closure for a missing Project `Status` write. |
 | Live data migration | Expand → backfill → verify → contract, as **separate** tickets. Never one commit. |
 | Tight budget | Narrow the gate to the smallest command that still proves the ticket; broad verify once at the end |
 
@@ -57,7 +57,7 @@ Each stage gets its own gate and its own reversibility statement. A migration ti
 ## Step 5 — Local handoff (when the tracker is unwritable)
 
 ```markdown
-# Handoff LUL-###
+# Handoff <owner>/<repo>#<issue-number>
 - role_that_ran: coder | planner | debugger
 - state_intended_next: Debugger Ready
 - paths:
@@ -69,7 +69,7 @@ Each stage gets its own gate and its own reversibility statement. A migration ti
 - invariants:
 - followups:
 - blockers:
-- github_issue_mutations: none (forbidden on synced repos)
+- github_project_readback: <project item URL/JSON or blocker evidence>
 ```
 
 Write it to the project's handoff location. Say clearly in your report that the tracker was **not** updated and who must update it.
@@ -84,4 +84,4 @@ Write it to the project's handoff location. Say clearly in your report that the 
 
 ## Related
 
-`part2` · `push-handoff` · `state-driven-pipeline-recovery` · `linear-pipeline` · `provider-integration-tdd`
+`part2` · `push-handoff` · `state-driven-pipeline-recovery` · `github-projects-pipeline` · `provider-integration-tdd`

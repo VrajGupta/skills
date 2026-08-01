@@ -9,7 +9,7 @@ Loop engineering ("loopcraft") is stacking feedback loops around an agent. Each 
 | Loop | What it adds | In Claude Code terms |
 |------|--------------|----------------------|
 | **1. Agent loop** | A model calling tools in a loop until a task is complete. | The base session — Claude reading, editing, running commands. |
-| **2. Verification loop** | A checker grades output against a rubric; failures go back to the maker with feedback. Trades latency for reliability. | The maker→checker loop in `SKILL.md`. Use a sub-agent (e.g. `code-review`, a `fork`, or the `Plan`/`Explore` agents) as the checker for true fresh-eyes grading. |
+| **2. Verification loop** | A checker grades output against a rubric; failures go back to the maker with feedback. Trades latency for reliability. | The maker→checker loop in `SKILL.md`. Prefer a separate top-level stage-parent session (or a one-level child of that parent) as the checker for true fresh-eyes grading; native children must not spawn nested children. |
 | **3. Event-driven loop** | The agent runs on triggers (cron, webhook, message) instead of manual invocation. | The `/loop` and `/schedule` skills, or `ScheduleWakeup`. |
 | **4. Hill-climbing loop** | Production traces feed an analysis pass that improves the harness (prompts, tools, rubric). Compounding gains. | Post-run: update the rubric, add the missing test, write a memory/skill. |
 

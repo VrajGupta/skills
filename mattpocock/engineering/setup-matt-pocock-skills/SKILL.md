@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Scaffold the per-repo configuration that the engineering skills assume:
 
-- **Issue tracker** — where issues live (GitHub by default; local markdown is also supported out of the box)
+- **GitHub Project** — the workflow board whose `Status` field is canonical; GitHub Issues are the ticket artifacts (local markdown is also supported as a fallback)
 - **Triage labels** — the strings used for the five canonical triage roles
 - **Domain docs** — where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
 
@@ -42,12 +42,12 @@ Lead each section with the recommended answer so the user can accept it in a wor
 
 Default posture: these skills were designed for GitHub. If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
 
-- **GitHub** — issues live in the repo's GitHub Issues (uses the `gh` CLI)
+- **GitHub Projects** — the Project is the workflow board and GitHub Issues are the ticket artifacts (uses the `gh` CLI)
 - **GitLab** — issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
 - **Local markdown** — issues live as files under `.scratch/<feature>/` in this repo (good for solo projects or repos without a remote)
-- **Other** (Jira, Linear, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
+- **Other** (Jira, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
 
-Record the choice in `docs/agents/issue-tracker.md`. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off** — leave it off and don't raise it; a user who wants external PRs in the triage queue can flip the flag in the file later.
+Record the choice in `docs/agents/issue-tracker.md`. The GitHub Projects and GitLab templates carry a "PRs as a request surface" flag, defaulted **off** — leave it off and don't raise it; a user who wants external PRs in the triage queue can flip the flag in the file later.
 
 **Section B — Triage label vocabulary.** Skip this section entirely if the `triage` skill isn't installed (exploration told you) — an uninstalled skill needs no labels.
 
@@ -104,7 +104,7 @@ Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.
 
 Then write the docs files using the seed templates in this skill folder as a starting point:
 
-- [issue-tracker-github.md](./issue-tracker-github.md) — GitHub issue tracker
+- [issue-tracker-github.md](./issue-tracker-github.md) — GitHub Projects + Issues tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md) — GitLab issue tracker
 - [issue-tracker-local.md](./issue-tracker-local.md) — local-markdown issue tracker
 - [triage-labels.md](./triage-labels.md) — label mapping (only if `triage` is installed)

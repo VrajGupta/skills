@@ -1,7 +1,7 @@
 ---
 name: part3
 version: 1.1.0
-description: Debugging and hardening chain — the third stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built: attacks weird inputs, failure modes, permission and tenant boundaries, verifies the /part1 invariants actually hold, audits test quality, and applies refactors — fixing everything test-first against the ticket's Verification-command, then moving the ticket to Grading Ready for /part4 to judge. Also runs in sweep mode over a whole directory to hunt bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo (idempotent). Use when the user runs /part3, wants agent-written code attacked before it can close, wants a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes its own bugs. Also use it when the user says to harden "all the issues" in Debugger Ready — it discovers the queue from the board itself and drains it one ticket at a time.
+description: Debugging and hardening chain — the third stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built: attacks weird inputs, failure modes, permission and tenant boundaries, verifies the /part1 invariants actually hold, audits test quality, and applies refactors — fixing everything test-first against the ticket's Verification-command, then moving the ticket to Grading Ready for /part4 to judge. Runs as the GPT-5.6 Luna Codex stage parent by default, with an optional one-level reviewer helper in that independent session. Also runs in sweep mode over a whole directory to hunt bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo (idempotent). Use when the user runs /part3, wants agent-written code attacked before it can close, wants a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes its own bugs. Also use it when the user says to harden "all the issues" in Debugger Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
 # /part3 — Debugging chain (Debugger Ready → attacked → Grading Ready)
@@ -24,16 +24,24 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
    └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
 ```
 
+### Stage-parent session
+
+The default debugger is GPT-5.6 Luna in a separate top-level Codex session using
+**maximum reasoning effort**. It may use reviewer helpers inside that independent
+stage-parent session when the harness supports them. If `/part3` was launched as a
+native child, it must perform the audit directly and must not spawn nested children.
+The debugger model must remain different from the Kimi maker and from the Grok
+grader.
+
 **Your board moves:** claim from **`Debugger Ready`** → **`Debugging`** before you
 touch anything → **`Grading Ready`** when the gate is green and the corners are
-covered. Each move sets the Linear status, the matching Linear label, and the
-matching GitHub label — all three, old state label removed — for **only the
-ticket you are working**; the rest of `Debugger Ready` stays idle. Read
-`~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics — including
-the GitHub label-mirror canary, the read-back-after-write rule, and the
-**no-tracker fallback**.
+covered. Each move updates the GitHub Project item's canonical `Status` field —
+for **only the ticket you are working**; the rest of `Debugger Ready` stays idle.
+Read `~/.claude/skills/github-projects-pipeline/SKILL.md` for the exact `gh project`
+mechanics, live field/option IDs, read-back-after-write rule, and the
+**no-project fallback**.
 
-**No Linear or GitHub? The debugging pass still runs in full.** Attack the same
+**No GitHub Project? The debugging pass still runs in full.** Attack the same
 corners, verify the same invariants, fix test-first against the same gate, and
 record the findings and the resulting stage in the project's local tracker or the
 handoff. Say which mode you're in. The audit is the value here; the label is only
@@ -56,10 +64,10 @@ Two modes, same machinery:
   anything larger gets **filed as a new ticket in `Agent Ready`** (or `Planned` if it
   needs grilling) rather than smuggled into an unrelated diff.
 
-> **Models are not this skill's concern.** The fleet's per-skill model map lives in the
-> project's CONTEXT docs. `/part3` runs on whatever model it's invoked with; do not
-> encode or pin models here. What *is* your concern: you should not be the same model
-> that wrote the code you're attacking. If you can't confirm that, say so.
+> **The global stage-parent profile is the default; a project's CONTEXT may override it.**
+> The default `/part3` parent is GPT-5.6 Luna in the Codex harness at maximum
+> reasoning. What *is* non-negotiable is that the debugger is not the same model or
+> context that wrote the code. If you cannot confirm that, say so.
 
 ## Before you start
 
@@ -99,7 +107,7 @@ instead of inventing tickets.
 
 ## Step 0 — Ensure the personalized agent (idempotent; mini /part1 + /part2)
 
-Check for **`.claude/agents/part3-<slug>.md`** (`<slug>` = the repo / project name):
+Check for **`.claude/agents/part3-<slug>.md`** (`<slug>` = the repo / project name). This reviewer belongs to the independent part3 stage-parent session; it is not permission for a native child of another session to create a grandchild:
 
 - **It exists** → **reuse it verbatim.** Do not recreate or regenerate it — that's the
   whole point of idempotent. Skip to Step 1. (If its pins are genuinely stale, *edit*
@@ -116,12 +124,14 @@ Check for **`.claude/agents/part3-<slug>.md`** (`<slug>` = the repo / project na
 
 ## Step 1 — Audit & fix (four nets)
 
-In ticket mode, move **that one ticket** to **`Debugging`** first — Linear status +
-Linear label + GitHub label, `Debugger Ready` label removed — so the board shows it's
-in flight. Move nothing else: if seven tickets sit in `Debugger Ready` and you're
+In ticket mode, move **that one project item** to **`Debugging`** first — update
+and read back the Project `Status` field — so the board shows it's in flight. Move
+nothing else: if seven tickets sit in `Debugger Ready` and you're
 debugging one, six stay put. A column full of tickets nobody is working destroys the
-only thing an in-flight column is for. Then spawn the `part3-<slug>` agent (via the Agent tool). It executes its
-pinned loop:
+only thing an in-flight column is for. Then, when this is the independent top-level
+part3 session, spawn the `part3-<slug>` reviewer through that session's agent tool. If
+this `/part3` run is itself a native child, execute the pinned loop directly instead
+of spawning a nested reviewer. It executes its pinned loop:
 1. **Read the CONTEXT / invariant docs first** so the audit is grounded.
 2. **Run the tests** it discovers via its globs; record every red (failing) test.
 3. **Audit for bugs — four nets** (the absorbed auditor is nets 3–4). **State the full
@@ -178,8 +188,8 @@ rather than thrashing.
 
 ## Step 3 — Move the ticket to Grading Ready
 
-When the gate is green and the corners are covered, move the ticket to **`Grading
-Ready`** — status + Linear label + GitHub label, `Debugging` label removed — and stop.
+When the gate is green and the corners are covered, move the project item to
+**`Grading Ready`** — update and read back the Project `Status` field — and stop.
 Leaving it parked in `Debugging` after you finish is the same failure as never moving
 it: the column stops meaning "live right now." Do not grade your own work and do not close it — `/part4` decides
 that, blind, on another model, and it will read the diff without your explanation of
@@ -188,8 +198,9 @@ the handoff: `/part4` never reads handoffs, so an undisclosed gap simply reappea
 bounce.
 
 In sweep mode there may be no single ticket to move. File what you found instead —
-fixed items as closed tickets in the trail, unfixed ones in `Agent Ready` (or `Planned`
-if they need grilling), labelled to match on both trackers — and say where each landed.
+fixed items as GitHub Project items in `Grading Ready`, unfixed ones in `Agent Ready`
+(or `Planned` if they need grilling), with the Project `Status` read back — and say
+where each landed.
 If a sweep does work several existing tickets, move each into `Debugging` **as you
 reach it** and out again as you finish, never claiming the batch up front.
 
@@ -213,10 +224,10 @@ reach it** and out again as you finish, never claiming the batch up front.
   regenerate. Bootstrap **and** run happen in the same `/part3` — no stop-and-rerun.
 - **The gate is "done," not a judgment call.** A bug is fixed when its
   `Verification-command` exits 0 — same discipline as `/part2`.
-- **Move the ticket on the board**: `Debugger Ready` → `Debugging` when you start →
-  `Grading Ready` when the gate is green, updating Linear status + Linear label +
-  GitHub label together every time — and **only for the ticket you're working**, never
-  the queue. See `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **Move the project item**: `Debugger Ready` → `Debugging` when you start →
+  `Grading Ready` when the gate is green, updating and reading back the Project
+  `Status` every time — and **only for the ticket you're working**, never the queue.
+  See `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - **Drain the queue serially when asked for "all of them"** — Steps 1–3 per
   ticket, re-query the board between laps, never more than one ticket in
   `Debugging` at a time.

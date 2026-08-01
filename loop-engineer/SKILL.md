@@ -10,6 +10,14 @@ Turn a coding task into a **closed loop** that runs until a goal is verifiably m
 
 The leverage is not the model — it's the loop you wrap around it. The single rule: **never declare done without the checker passing the done-condition.**
 
+## Session topology
+
+For the four-stage fleet, run the maker and checker in separate top-level stage-parent
+sessions when possible. The current default parents are Opus 5/Claude Code for
+planning, Kimi K3/Pi for coding, GPT-5.6 Luna/Codex at max effort for debugging, and
+Grok 4.5/Pi for grading. A native child may not spawn nested children; use the
+GitHub Project item, GitHub issue, git/PR artifacts, and handoffs to bridge sessions.
+
 ## Workflow
 
 Run these in order. Loops 1–2 are the core; 3–4 are escalations.

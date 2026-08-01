@@ -62,12 +62,12 @@ Misclassifying B as A is the single most expensive mistake here — it burns bud
 ## Step 5 — Write the recovery record
 
 ```
-Recovery for LUL-###
+Recovery for <owner>/<repo>#<issue-number>
 Observed: <the smell>
 Evidence: <command + real output, verbatim>
 Repo vs tracker: <where they disagreed>
 Classification: implementation defect | structural blocker
-Action taken: <repair / blocker comment / prerequisite ticket LUL-###>
+Action taken: <repair / blocker comment / prerequisite GitHub issue #<number>>
 State: <unchanged | moved X → Y, readback confirmed>
 Next owner: <role>
 ```
@@ -82,4 +82,4 @@ Next owner: <role>
 
 ## Related
 
-`linear-pipeline` · `linear-label-pipeline` · `part2` · `part3` · `shared-worktree-safety` · `invariant-evidence-review`
+`github-projects-pipeline` · `part2` · `part3` · `shared-worktree-safety` · `invariant-evidence-review`

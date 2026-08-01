@@ -1,7 +1,7 @@
 ---
 name: part4
 version: 1.1.0
-description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a ticket from Grading Ready, moves it to Grading on both Linear and GitHub, reads ONLY the diff plus the ticket and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass closes the ticket to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the whole Grading Ready queue or "all the issues" — it finds them on the board itself and drains them one at a time.
+description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a GitHub Project item from Grading Ready, moves it to Grading, reads ONLY the diff plus the GitHub issue and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass sets the Project Status to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the whole Grading Ready queue or "all the issues" — it finds them on the board itself and drains them one at a time.
 ---
 
 # /part4 — Grading chain (Grading Ready → judged → Done or bounced back)
@@ -18,11 +18,11 @@ confident approval of the bug. An independent judge on a different model breaks
 that correlation. Protect that independence above all else; everything in this
 skill exists to keep the judgment uncontaminated.
 
-> **Models are not this skill's concern.** The fleet's per-skill model map lives
-> in the project's CONTEXT docs. `/part4` runs on whatever model it is invoked
-> with. What *is* this skill's concern is that the grader is a **different context
-> and a different model than the one that produced the diff** — if you cannot
-> confirm that, say so in the verdict rather than quietly grading anyway.
+> **The global stage-parent profile is the default; a project's CONTEXT may override it.**
+> The default `/part4` parent is Grok 4.5 in the Pi harness through OpenRouter. What
+> *is* non-negotiable is that the grader is a **different context and a different
+> model than the one that produced the diff** — if you cannot confirm that, say so
+> in the verdict rather than quietly grading anyway.
 
 ## Your place in the fleet loop
 
@@ -31,18 +31,27 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
    └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
 ```
 
+### Stage-parent session
+
+The default grader is Grok 4.5 in a separate top-level Pi session through OpenRouter.
+It must be a fresh, independent context from both the Kimi maker and the Codex
+debugger. If helpers are used, give every helper only the ticket, diff, gate, and
+invariant docs; never pass the part2/part3 handoff or author rationale before the
+verdict. A native child launched from another session must not spawn nested children.
+
 **Your board moves:** claim from **`Grading Ready`** → **`Grading`** before you
 read a line of the diff → **`Done`** on a pass, or back to `Debugger Ready` /
-`Agent Ready` / `Planned` on a fail. Each move sets the Linear status, the
-matching Linear label, and the matching GitHub label — all three, old state label
-removed — for **only the ticket you are grading**; the rest of `Grading Ready`
-stays idle. Read `~/.claude/skills/linear-pipeline/SKILL.md` for the exact
-mechanics — including the GitHub label-mirror canary, the
-read-back-after-write rule, and the **no-tracker fallback**.
+`Agent Ready` / `Planned` on a fail. Each move updates the GitHub Project item's
+canonical `Status` field — for **only the ticket you are grading**; the rest of
+`Grading Ready` stays idle. Read `~/.claude/skills/github-projects-pipeline/SKILL.md`
+for the exact `gh project` mechanics, live field/option IDs, read-back-after-write
+rule, and the **no-project fallback**.
 
-You are the only stage that may set `Done`.
+You are the only stage that may set `Done`. Review the project's built-in workflows
+before starting; an automatic closed-issue or merged-PR transition must not bypass
+this blind grade.
 
-**No Linear or GitHub? The grade still runs in full.** Judge the diff blind
+**No GitHub Project? The grade still runs in full.** Judge the diff blind
 against the same rubric, reach the same PASS/FAIL, and record the verdict and its
 routing in the project's local tracker or the handoff — including the bounce
 count, since without a board that history has nowhere else to live. Say which
@@ -195,8 +204,9 @@ be next.
 | **FAIL — scope / tests** | **Agent Ready** | It's not wrong, it's *missing*: an unimplemented acceptance criterion, an invariant with no covering test, tautological tests. |
 | **FAIL — bad ticket** | **Planned** | The ticket is unbuildable as written: contradictory criteria, no `Verification-command`, an invariant that can't be satisfied. Not the coder's fault; don't send it to one. |
 
-Every route is a real board move out of `Grading`: Linear status, Linear label,
-and GitHub label together, with the `Grading` label removed. A ticket left sitting
+Every route is a real Project move out of `Grading`: update the GitHub Project
+item's `Status` field and read it back. Labels are not a second state machine. A
+ticket left sitting
 in `Grading` after you've decided is worse than ungraded work — it looks claimed,
 so nothing else will touch it.
 
@@ -240,8 +250,8 @@ Gate: <verification-command> → exit 0 | exit N
 → <Done | Debugger Ready | Agent Ready | Planned | Human escalation> — <one-line reason>
 ```
 
-Then move the ticket out of `Grading` to that state, on both trackers. **A verdict
-that doesn't move the ticket has not been delivered** — the board is the fleet's
+Then move the GitHub Project item out of `Grading` to that state and read it back.
+**A verdict that doesn't move the project item has not been delivered** — the board is the fleet's
 shared memory, and a grade that lives only in chat is invisible to the next run.
 
 On escalation (bounce 3), leave the ticket in `Grading` and say so explicitly:
@@ -277,10 +287,10 @@ anywhere in the loop — the one thing this skill exists to provide.
   wrong behavior, or it doesn't block.
 - **Route by failure kind** — correctness → Debugger Ready, scope/tests → Agent
   Ready, bad ticket → Planned. Never one default lane.
-- **Move the ticket on the board**: `Grading Ready` → `Grading` before you read
-  the diff → its routed state after the verdict, updating Linear status + Linear
-  label + GitHub label together every time, and **only for the ticket you're
-  grading**. See `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **Move the project item**: `Grading Ready` → `Grading` before you read
+  the diff → its routed state after the verdict, updating and reading back the
+  Project `Status` every time, and **only for the ticket you're grading**. See
+  `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - **Only you may set `Done`.** No other stage closes tickets; don't let one talk
   you into treating its handoff as a verdict.
 - **Drain the queue serially when asked for "all of them"** — full skill per
@@ -292,6 +302,6 @@ anywhere in the loop — the one thing this skill exists to provide.
 - **Taste advises, it doesn't block** — unless you can name the concrete future
   failure it causes.
 - End with a short summary: the ticket graded, PASS/FAIL + score, blocking
-  findings, **the state you moved it to on both trackers**, the bounce count, the
+  findings, **the Project `Status` you moved it to**, the bounce count, the
   **pushed commit hash**, and the remote branch — omitting the routing or the push
   means the run failed.

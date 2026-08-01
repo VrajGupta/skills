@@ -1,6 +1,6 @@
 ---
 name: setup-obsidian
-version: 1.0.0
+version: 1.1.0
 description: Turn a repo's docs folder into a retrieval graph — router, generated indexes, state file — and open it as an Obsidian vault.
 disable-model-invocation: true
 ---
@@ -46,6 +46,8 @@ A hand-written index **drifts**, and a drifted index is a pile again. So it is g
 Copy [`build-graph-index.mjs`](build-graph-index.mjs) into the repo's scripts directory and adapt its `GROUPS` to the real subfolders. Wire a task in the project's runner (`npm run graph:index`, a Makefile target, whatever the repo already uses).
 
 Split the index by **branch of question**, not into one big file: a question about decisions should never load the issue list. One index per category that a reader consults independently.
+
+Then split again by **live versus settled**. Work items accumulate: a folder that is 90% shipped tickets produces an index where 90% of every load is history. Measured on a real vault, a 176-item issue index cost 11.3k tokens — more than grepping the folder it indexed, so the graph *lost* on issue questions. Filtering shipped/cut into a second file dropped the loaded index to 0.9k. Keep the settled index — it is still the way to answer "did we ever do X" — just stop paying for it on every other question. Treat a node with no status as live, so nothing silently disappears.
 
 Extract per node: title from the first heading, status if the format carries one, and the first real sentence of prose. Status matters most — an index line reading `[superseded by 0023]` stops the agent opening a reversed decision without opening anything.
 
@@ -107,3 +109,4 @@ Then: open the editor, **Open folder as vault**, select the Step 2 folder, open 
 | Index missing new notes | Drift | `--check` in CI |
 | Graph view is a hairball | Vault scoped too wide | Rescope to the signal folder |
 | Agent cites a reversed decision | Status not surfaced in the index line | Extract status into the generated line |
+| Index costs more than the folder it indexes | Settled work never leaves the index | Split live from shipped/cut; measure both |

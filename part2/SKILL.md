@@ -21,16 +21,24 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
    └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
 ```
 
-**Your board moves:** claim from **`Agent Ready`** → **`Coding`** before writing
-any code → **`Debugger Ready`** when the gate is green. Each move sets the Linear
-status, the matching Linear label, and the matching GitHub label — all three, old
-state label removed — and applies to **only the one ticket you are building**;
-the rest of `Agent Ready` stays untouched. Read
-`~/.claude/skills/linear-pipeline/SKILL.md` for the exact mechanics — including
-the GitHub label-mirror canary, the read-back-after-write rule, and the
-**no-tracker fallback**.
+### Stage-parent session
 
-**No Linear or GitHub? The build still runs in full.** Take the next ticket from
+The default coder is Kimi K3 in a separate top-level Pi session through OpenRouter,
+with high reasoning. It may use Kimi K2.7 Code helpers only when Kimi K3 is the
+independent stage parent. If `/part2` was launched as a native child of another
+session, it must work directly and cannot create nested children. The GitHub
+Project item, GitHub issue, git/PR artifacts, and handoff bridge this session to the
+other stage parents.
+
+**Your board moves:** claim from **`Agent Ready`** → **`Coding`** before writing
+any code → **`Debugger Ready`** when the gate is green. Each move updates the
+GitHub Project item's canonical `Status` field and applies to **only the one ticket
+you are building**; the rest of `Agent Ready` stays untouched. Read
+`~/.claude/skills/github-projects-pipeline/SKILL.md` for the exact `gh project`
+mechanics, live field/option IDs, read-back-after-write rule, and the
+**no-project fallback**.
+
+**No GitHub Project? The build still runs in full.** Take the next ticket from
 the project's local tracker or the newest handoff, build it test-first against the
 same gate, self-check the same way, and record where it ended up in the handoff.
 Say which mode you're in. A missing label is a bookkeeping gap; a skipped test is
@@ -65,8 +73,8 @@ Read, in roughly this order (use whatever the repo actually has):
 **Selection rule:** pick the **lowest-numbered ticket in Agent Ready whose every
 Blocked-by ticket is done.** Prefer a ticket carrying a `/part4` grade comment
 (a bounce) over a fresh one — bounced work is already half-built and blocking a
-close. **Move that one ticket to `Coding` before you write any code** — Linear
-status + Linear label + GitHub label, with the `Agent Ready` label removed — so
+close. **Move that one project item to `Coding` before you write any code** —
+update the Project `Status` field and read it back — so
 the board shows what's in flight. A ticket being worked on while it still reads
 `Agent Ready` is invisible, and a second run will claim it and build the same
 thing twice. **Move only that ticket:** the rest of the `Agent Ready` queue stays
@@ -148,8 +156,8 @@ and report the blocking failure rather than thrashing.
    `/part3` owns that pass, and a refactor riding along inside a feature diff
    makes the diff harder for it to review.
 
-7. **Move the ticket to `Debugger Ready`** — status + Linear label + GitHub label,
-   `Coding` label removed. This is what "done building" means at this stage — not
+7. **Move the project item to `Debugger Ready`** — update and read back the
+   Project `Status` field. This is what "done building" means at this stage — not
    `Done`, and not a judgment call you get to make. Leaving it in `Coding` after
    you finish is the same bug as never moving it there: the column stops meaning
    "an agent is on this right now." If something is
@@ -175,11 +183,11 @@ and report the blocking failure rather than thrashing.
 
 - Run the skills **sequentially**; finish each before the next — **build →
   self-check → move to Debugger Ready → `handoff` → `push-handoff`**, every time.
-- **Move the ticket on the board**: `Agent Ready` → `Coding` when you start →
-  `Debugger Ready` when the gate is green, updating Linear status + Linear label +
-  GitHub label together every time. The board is the fleet's shared memory; work
-  that doesn't move on it is invisible to the next stage. See
-  `~/.claude/skills/linear-pipeline/SKILL.md`.
+- **Move the project item**: `Agent Ready` → `Coding` when you start →
+  `Debugger Ready` when the gate is green, updating the Project `Status` and
+  reading it back every time. The project is the fleet's shared memory; work that
+  does not move on it is invisible to the next stage. See
+  `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - **One ticket moves, not the queue.** Only the ticket you're actually building
   enters `Coding`; everything else stays idle where it is.
 - **You never mark anything Done.** Only `/part4` closes tickets. A green suite is

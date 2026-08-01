@@ -15,14 +15,24 @@ const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
 const CONTEXT = join(ROOT, 'CONTEXT')
 const CHECK = process.argv.includes('--check')
 
+/** A node whose status says the work is over. Anything else — including a node
+ *  with no status at all — is treated as live, so nothing goes missing. */
+const SETTLED = (n) => /^(shipped|cut|done|closed|wontfix|superseded)\b/.test(n.status)
+
 const GROUPS = [
   { file: 'index.md', title: 'index — durable knowledge', sections: [
     { heading: 'Glossary', dir: '.', only: ['CONTEXT.md'] },
     { heading: 'Decisions (ADR)', dir: 'docs/adr' },
     { heading: 'Planning (PRDs, stack, scope)', dir: 'planning' },
   ]},
-  { file: 'index-issues.md', title: 'index — issues (work items)', sections: [
-    { heading: 'Issues', dir: 'issues' },
+  // Work items accumulate. Once most of them are settled, an index holding all
+  // of them costs more to load than grepping the folder it indexes — so live
+  // and settled get their own files, and the router points at both.
+  { file: 'index-issues.md', title: 'index — issues (open work)', sections: [
+    { heading: 'Open issues', dir: 'issues', reject: SETTLED },
+  ]},
+  { file: 'index-issues-closed.md', title: 'index — issues (shipped & cut)', sections: [
+    { heading: 'Settled issues', dir: 'issues', accept: SETTLED },
   ]},
   { file: 'index-handoffs.md', title: 'index — handoffs (session history)', sections: [
     { heading: 'Handoffs', dir: 'handoffs' },
@@ -71,11 +81,14 @@ function nodesIn(section) {
   const names = section.only
     ? section.only.filter((n) => existsSync(join(dir, n)))
     : readdirSync(dir).filter((n) => n.endsWith('.md')).sort()
-  return names.map((name) => {
+  const nodes = names.map((name) => {
     const body = readFileSync(join(dir, name), 'utf8')
     const link = relative(CONTEXT, join(dir, name))
     return { name, link, title: title(body, name), status: status(body), summary: summary(body) }
   })
+  if (section.accept) return nodes.filter(section.accept)
+  if (section.reject) return nodes.filter((n) => !section.reject(n))
+  return nodes
 }
 
 function render(group) {

@@ -78,6 +78,13 @@ claim, gate, judge, route, comment — to completion on one ticket, then start o
 from `Before you start` for the next. The board should never show more than one
 ticket in `Grading` because of you.
 
+**The fan-out exception does not reach this stage.** `parallel-subagent-implementation`
+exists so `/part2` and `/part3` can widen when the user authorizes it. Grading is
+different in kind: the verdict is the product, and a helper that judges on your
+behalf becomes the judge — the one role this skill exists to keep independent and
+uncontaminated. Helpers may fetch a diff or run the gate; only you weigh the rubric
+and route the ticket. No authorization changes that.
+
 Two habits make this loop reliable:
 
 - **Re-query the queue between tickets, never cache it.** The list you fetched at

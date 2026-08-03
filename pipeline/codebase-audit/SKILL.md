@@ -1,6 +1,6 @@
 ---
 name: codebase-audit
-version: 1.0.0
+version: 1.0.1
 description: Full-stack audit methodology for a whole codebase or app rather than a single diff — establish the boundary and baseline, sweep layer by layer (entry points, domain, data, integrations, auth, tests, ops), rank findings by blast radius, and emit each finding as a ready-to-implement ticket with a Verification-command. Use when asked to audit an app or codebase, assess a project's health, review before a launch, or produce a prioritized defect backlog.
 ---
 

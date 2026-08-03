@@ -1,6 +1,6 @@
 ---
 name: part3
-version: 1.1.1
+version: 1.2.0
 description: Debugging and hardening chain — the third fleet stage (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built — attacking weird inputs, failure modes, permission and tenant boundaries, /part1 invariants, and test quality, then fixing everything test-first against the ticket's Verification-command before moving it to Grading Ready for /part4. Runs as the GPT-5.6 Luna Codex stage parent by default, with an optional one-level reviewer helper. Also supports sweep mode over a directory to find bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo. Use when the user runs /part3, wants agent-written code attacked before it can close, needs a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes bugs. Also use it to harden all issues in Debugger Ready; it discovers the queue from the board and drains it one ticket at a time.
 ---
 

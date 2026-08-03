@@ -1,6 +1,6 @@
 ---
 name: part2
-version: 1.1.0
+version: 1.2.0
 description: Implementation chain and the build stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /part2, wants to pick up and implement the next ready ticket, or needs to build a ticket that /part4 bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 

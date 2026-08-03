@@ -1,6 +1,6 @@
 ---
 name: push-handoff
-version: 2.1.0
+version: 2.1.1
 description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final step of part1/part2/part3, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 

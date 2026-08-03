@@ -1,6 +1,6 @@
 ---
 name: part4
-version: 1.1.1
+version: 1.2.0
 description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a GitHub Project item from Grading Ready, moves it to Grading, reads ONLY the diff plus the GitHub issue and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass sets the Project Status to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the Grading Ready queue or "all the issues" — it finds them on the board and drains them one at a time.
 ---
 

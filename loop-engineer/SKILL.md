@@ -15,7 +15,7 @@ The leverage is not the model — it's the loop you wrap around it. The single r
 For the four-stage fleet, run the maker and checker in separate top-level stage-parent
 sessions when possible. The current default parents are Opus 5/Claude Code for
 planning, Kimi K3/Pi for coding, GPT-5.6 Luna/Codex at max effort for debugging, and
-Grok 4.5/Pi for grading. A native child may not spawn nested children; use the
+Grok 4.5/Pi for reviewing. A native child may not spawn nested children; use the
 GitHub Project item, GitHub issue, git/PR artifacts, and handoffs to bridge sessions.
 
 ## Workflow
@@ -28,7 +28,7 @@ Write a short **loop contract** at the top of your working notes:
 
 - **Goal** — one sentence, the user-visible outcome.
 - **Done-condition** — a *machine-checkable* gate. Prefer a command: `npm test`, `pytest -k feature`, `tsc --noEmit`, a curl returning 200, a screenshot diff. If it can't be checked by running something, rewrite it until it can.
-- **Rubric** — 3–6 bullets the checker grades against (correctness, edge cases, no regressions, matches existing patterns, no debug cruft). See [REFERENCE.md](REFERENCE.md) for a template.
+- **Rubric** — 3–6 bullets the checker reviews against (correctness, edge cases, no regressions, matches existing patterns, no debug cruft). See [REFERENCE.md](REFERENCE.md) for a template.
 - **Budget** — max iterations (default 5) and what to do on exhaustion (stop and report, don't thrash).
 
 If the goal can't be made checkable, stop and ask the user — that's the one thing worth interrupting for.
@@ -39,7 +39,7 @@ If the goal can't be made checkable, stop and ask the user — that's the one th
 until done-condition passes OR budget exhausted:
   MAKER:   write the failing test first (or repro), then the smallest change toward the goal
   RUN:     execute the done-condition command
-  CHECKER: grade the result against the rubric with FRESH eyes —
+  CHECKER: review the result against the rubric with FRESH eyes —
            do not trust the maker's own claim of success.
            Output: PASS, or specific failing bullets + concrete next action.
   if PASS:    exit loop

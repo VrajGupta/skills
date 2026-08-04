@@ -1,10 +1,10 @@
 ---
-name: part1
+name: planner
 version: 1.1.0
-description: Planning chain and the first stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets that land on the board in Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /part1, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /part4 bounced back as unbuildable.
+description: Planning chain and the first stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets that land on the board in Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /planner, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /reviewer bounced back as unbuildable.
 ---
 
-# /part1 — Planning chain (idea → spec → tickets → pushed handoff)
+# /planner — Planning chain (idea → spec → tickets → pushed handoff)
 
 Orchestrate the planning skills **in order**, carrying context forward through
 each, with an explicit invariants gate before the spec. This is the repeatable
@@ -17,8 +17,8 @@ The fleet is a pipeline on the project's board, one skill per stage, each stage
 run by a **different model** so that no stage ever reviews its own work:
 
 ```
-Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done
-   └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
+Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
+   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
 ```
 
 ### Stage-parent session
@@ -26,7 +26,7 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading 
 The default planner is Opus 5 in the Claude Code harness using the Claude
 subscription. GPT-5.6 Luna may dispatch it as a headless child after all planning
 decisions are supplied, or the human may run it in a visible Claude Code session.
-Because the grill is interactive, a headless child cannot ask the user. `/part1` may
+Because the grill is interactive, a headless child cannot ask the user. `/planner` may
 use one-level helpers only when it is the independent top-level stage parent; a
 native child launched from another session must not spawn nested children.
 
@@ -43,13 +43,13 @@ invariants, and write tickets into the project's local tracker (`tickets.md`) or
 the handoff; say which mode you're in. Never skip planning work because a project
 field could not be written.
 
-`/part1` **opens** the loop. Everything downstream — the gate `/part2` builds
-against, the invariants `/part3` attacks, the criteria `/part4` grades — comes
+`/planner` **opens** the loop. Everything downstream — the gate `/coder` builds
+against, the invariants `/debugger` attacks, the criteria `/reviewer` reviews — comes
 from the tickets you write here. A vague ticket doesn't fail at planning time; it
 fails three stages later as a ticket that bounces forever because no one can tell
 whether it's satisfied. Write for those three readers.
 
-`/part4` can also send work **back** here: a ticket it judges unbuildable (contra-
+`/reviewer` can also send work **back** here: a ticket it judges unbuildable (contra-
 dictory criteria, no runnable `Verification-command`, an unsatisfiable invariant)
 returns to **Planned** with its reason. When you pick up such a ticket, repair the
 ticket itself — re-grill the ambiguous decision if you must — and return it to
@@ -57,11 +57,11 @@ ticket itself — re-grill the ambiguous decision if you must — and return it 
 
 ### Draining the queue — repairing bounced tickets
 
-Planning an effort is one run. But `/part4` also routes unbuildable tickets back
+Planning an effort is one run. But `/reviewer` also routes unbuildable tickets back
 to **`Planned`**, and those form a queue you can drain: if the user asks you to
 fix the bounced tickets, handle them **one at a time** — repair the ticket, return
 it to `Agent Ready`, then re-query the board and take the next. Re-query rather
-than caching, since a grader may add to that queue while you work. Report each
+than caching, since a reviewer may add to that queue while you work. Report each
 ticket and its new state, one line each.
 
 ## Before you start
@@ -102,10 +102,10 @@ Look at the effort you just confirmed and the docs you just read, then judge:
 
   > "This looks bigger than one grilling session — I'd run `/wayfinder` first to
   > map it into investigation tickets, resolve those until the path is clear, then
-  > run `/part1` on each resulting chunk. Want me to do that instead?"
+  > run `/planner` on each resulting chunk. Want me to do that instead?"
 
   Say *why* (which of the above signals tripped). If the user agrees, hand off to
-  `/wayfinder` and stop the chain here — you'll re-enter `/part1` per resolved
+  `/wayfinder` and stop the chain here — you'll re-enter `/planner` per resolved
   chunk once the map exists. If the user would rather grill anyway (e.g. they only
   want to plan one slice of it now), narrow the subject to that slice and continue.
 
@@ -133,7 +133,7 @@ call, ask the user rather than silently picking.
      exposed to whom, and the blast radius if a boundary is crossed.
    This is the "adult in the room" step: without it the plan optimizes for "finish,"
    not "safe." Carry these invariants forward so `to-spec` and `to-tickets` both honor
-   them and so **`/part3`'s red-team pass has concrete targets to attack** and so `/part4` has something falsifiable to grade against.
+   them and so **`/debugger`'s red-team pass has concrete targets to attack** and so `/reviewer` has something falsifiable to review against.
 3. **`to-spec`** — synthesize the grilled decisions **and the locked invariants** into
    a spec (do **not** re-interview). The spec must state the invariants as explicit
    acceptance constraints, not leave them implicit. Publish it to wherever the project
@@ -144,7 +144,7 @@ call, ask the user rather than silently picking.
    touches an invariant must restate the relevant budget/failure-mode/boundary in its
    acceptance criteria. **Each ticket must also ship a machine-checkable
    done-condition — a `Verification-command` (e.g. `npm test -- <ticket>.spec &&
-   tsc --noEmit`) that exits 0 exactly when the ticket is complete** — so `/part2`
+   tsc --noEmit`) that exits 0 exactly when the ticket is complete** — so `/coder`
    has a concrete gate to loop its maker→checker pass against instead of judging
    "done" by eye. Quiz the user on the breakdown, then publish each ticket with
    What-to-build / Acceptance-criteria / **Verification-command** / Blocked-by,
@@ -153,11 +153,11 @@ call, ask the user rather than silently picking.
    `Status` field through `gh project`, then read the item back. A ticket
    with unsatisfied blockers **stays in `Planned`**; that queue is exactly the set
    of work that isn't claimable yet, and putting blocked tickets in `Agent Ready`
-   makes `/part2` pick up work it can't finish.
-   **Write acceptance criteria so a blind grader can check them.** `/part4` judges
+   makes `/coder` pick up work it can't finish.
+   **Write acceptance criteria so a blind reviewer can check them.** `/reviewer` judges
    the diff against this ticket *without* reading the author's handoff or
    rationale, so each criterion must be checkable from code and tests alone.
-   "Handles errors gracefully" gives the grader nothing to verify and guarantees a
+   "Handles errors gracefully" gives the reviewer nothing to verify and guarantees a
    bounce; "on provider 5xx, retries twice then marks the Brief `failed` with
    reason `provider_unavailable`" is checkable. One observable behavior per
    criterion — no compound "and"s that can be half-satisfied and argued about.
@@ -182,7 +182,7 @@ call, ask the user rather than silently picking.
 6. **`push-handoff`** — **always run this last.** Read and follow the
    **`push-handoff`** skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the
    handoff doc + all planning artifacts (spec, tickets, CONTEXT updates), commit,
-   and push to the configured remote. **`/part1` is not complete until push
+   and push to the configured remote. **`/planner` is not complete until push
    succeeds** (or you report an auth blocker with the skill's recovery steps).
    Never commit secrets.
 
@@ -200,8 +200,8 @@ call, ask the user rather than silently picking.
   with the user before `to-spec`, don't let the spec paper over it.
 - Stop and surface to the user if grilling reveals the effort needs a new ADR, or
   if `to-tickets` granularity isn't approved — don't push half-baked artifacts.
-- **Plan for `/part2`'s gated loop.** Every ticket ships a runnable
-  `Verification-command` (its machine-checkable done-condition) so `/part2` can
+- **Plan for `/coder`'s gated loop.** Every ticket ships a runnable
+  `Verification-command` (its machine-checkable done-condition) so `/coder` can
   loop maker→checker against a real gate, not a judgment call. A ticket with no
   runnable done-condition isn't ready — resolve it before publishing.
 - Defer project-specific conventions (tracker format, repo, labels, doc paths) to

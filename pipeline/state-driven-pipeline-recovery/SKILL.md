@@ -1,7 +1,7 @@
 ---
 name: state-driven-pipeline-recovery
 version: 1.0.0
-description: Unstick a pipeline that is thrashing or reporting false progress — detect the false-green smells, classify the blockage as implementation defect vs missing structural prerequisite, and either repair with part2 discipline or write a truthful blocker and spawn the prerequisite ticket. Use when a ticket has been retried repeatedly with no new evidence, when a worker reports success but nothing changed, when a ticket sits in Coding but cannot actually land, or when the tracker state and the repo disagree.
+description: Unstick a pipeline that is thrashing or reporting false progress — detect the false-green smells, classify the blockage as implementation defect vs missing structural prerequisite, and either repair with coder discipline or write a truthful blocker and spawn the prerequisite ticket. Use when a ticket has been retried repeatedly with no new evidence, when a worker reports success but nothing changed, when a ticket sits in Coding but cannot actually land, or when the tracker state and the repo disagree.
 ---
 
 # state-driven-pipeline-recovery
@@ -40,7 +40,7 @@ Compare what the tracker claims against what the repo proves. Where they disagre
 Exactly one of two:
 
 **A. Implementation defect** — the design is sound, the code is wrong. The ticket *can* land as written.
-→ Recover with `part2` discipline: lock the gate, reproduce, test-first, smallest fix, re-gate. Apply a repair budget (default five meaningful attempts), then escalate to B.
+→ Recover with `coder` discipline: lock the gate, reproduce, test-first, smallest fix, re-gate. Apply a repair budget (default five meaningful attempts), then escalate to B.
 
 **B. Structural blocker** — the ticket *cannot* land as specified. A prerequisite doesn't exist, the seam is wrong, the plan assumed something false, or the invariant needs a boundary that isn't there.
 → **Do not keep burning the child.** Instead:
@@ -82,4 +82,4 @@ Next owner: <role>
 
 ## Related
 
-`github-projects-pipeline` · `part2` · `part3` · `shared-worktree-safety` · `invariant-evidence-review`
+`github-projects-pipeline` · `coder` · `debugger` · `shared-worktree-safety` · `invariant-evidence-review`

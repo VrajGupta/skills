@@ -1,13 +1,13 @@
 ---
-name: part4
+name: reviewer
 version: 1.2.0
-description: Grading chain and gate to Done — the independent judge at the end of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade). Claims a GitHub Project item from Grading Ready, moves it to Grading, reads ONLY the diff plus the GitHub issue and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass sets the Project Status to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /part4, wants a ticket or diff graded before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to grade the Grading Ready queue or "all the issues" — it finds them on the board and drains them one at a time.
+description: Review chain and gate to Done — the independent judge at the end of the fleet loop (planner plan → coder build → debugger debug → reviewer review). Claims a GitHub Project item from Review Ready, moves it to Reviewing, reads ONLY the diff plus the GitHub issue and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass sets the Project Status to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human instead of looping forever. Use when the user runs /reviewer, wants a ticket or diff reviewed before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to review the Review Ready queue or "all the issues" — it finds them on the board and drains them one at a time.
 ---
 
-# /part4 — Grading chain (Grading Ready → judged → Done or bounced back)
+# /reviewer — Review chain (Review Ready → judged → Done or bounced back)
 
-The **gate** of the fleet. `/part1` frames the work, `/part2` builds it, `/part3`
-debugs and hunts for what nobody filed, and `/part4` decides whether any of it is
+The **gate** of the fleet. `/planner` frames the work, `/coder` builds it, `/debugger`
+debugs and hunts for what nobody filed, and `/reviewer` decides whether any of it is
 allowed to close. It is the only skill in the fleet with the authority to move a
 ticket to **Done**, and the only one whose job is to say *no*.
 
@@ -19,39 +19,39 @@ that correlation. Protect that independence above all else; everything in this
 skill exists to keep the judgment uncontaminated.
 
 > **The global stage-parent profile is the default; a project's CONTEXT may override it.**
-> The default `/part4` parent is Grok 4.5 in the Pi harness through OpenRouter. What
-> *is* non-negotiable is that the grader is a **different context and a different
+> The default `/reviewer` parent is Grok 4.5 in the Pi harness through OpenRouter. What
+> *is* non-negotiable is that the reviewer is a **different context and a different
 > model than the one that produced the diff** — if you cannot confirm that, say so
-> in the verdict rather than quietly grading anyway.
+> in the verdict rather than quietly reviewing anyway.
 
 ## Your place in the fleet loop
 
 ```
-Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done
-   └ /part1 ─┘  └──── /part2 ────┘   └──── /part3 ────┘   └──── /part4 ────┘
+Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
+   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
 ```
 
 ### Stage-parent session
 
-The default grader is Grok 4.5 in a separate top-level Pi session through OpenRouter.
+The default reviewer is Grok 4.5 in a separate top-level Pi session through OpenRouter.
 It must be a fresh, independent context from both the Kimi maker and the Codex
 debugger. If helpers are used, give every helper only the ticket, diff, gate, and
-invariant docs; never pass the part2/part3 handoff or author rationale before the
+invariant docs; never pass the coder/debugger handoff or author rationale before the
 verdict. A native child launched from another session must not spawn nested children.
 
-**Your board moves:** claim from **`Grading Ready`** → **`Grading`** before you
+**Your board moves:** claim from **`Review Ready`** → **`Reviewing`** before you
 read a line of the diff → **`Done`** on a pass, or back to `Debugger Ready` /
 `Agent Ready` / `Planned` on a fail. Each move updates the GitHub Project item's
-canonical `Status` field — for **only the ticket you are grading**; the rest of
-`Grading Ready` stays idle. Read `~/.claude/skills/github-projects-pipeline/SKILL.md`
+canonical `Status` field — for **only the ticket you are reviewing**; the rest of
+`Review Ready` stays idle. Read `~/.claude/skills/github-projects-pipeline/SKILL.md`
 for the exact `gh project` mechanics, live field/option IDs, read-back-after-write
 rule, and the **no-project fallback**.
 
 You are the only stage that may set `Done`. Review the project's built-in workflows
 before starting; an automatic closed-issue or merged-PR transition must not bypass
-this blind grade.
+this blind review.
 
-**No GitHub Project? The grade still runs in full.** Judge the diff blind
+**No GitHub Project? The review still runs in full.** Judge the diff blind
 against the same rubric, reach the same PASS/FAIL, and record the verdict and its
 routing in the project's local tracker or the handoff — including the bounce
 count, since without a board that history has nowhere else to live. Say which
@@ -60,26 +60,26 @@ verdict is filed is secondary.
 
 ## Before you start
 
-Identify the **ticket under grade**. If the user named one, use it. If not, take
-the oldest ticket in the tracker's **`Grading Ready`** state; if several, grade
+Identify the **ticket under review**. If the user named one, use it. If not, take
+the oldest ticket in the tracker's **`Review Ready`** state; if several, review
 the lowest-numbered one and say which you picked. If none are waiting, say so and
 stop — do not invent work.
 
-**Move that one ticket to `Grading` now**, before reading the diff, so the board
-shows a grade in progress. Move nothing else: claiming the whole `Grading Ready`
+**Move that one ticket to `Reviewing` now**, before reading the diff, so the board
+shows a review in progress. Move nothing else: claiming the whole `Review Ready`
 queue would mark six tickets as under judgment while one actually is.
 
-### Draining the queue — "grade all of them"
+### Draining the queue — "review all of them"
 
-One ticket per run is the default. When the user asks for the whole queue ("grade
-everything in Grading Ready", "pick them all up"), do not reinterpret that as
-grading them in parallel or claiming them as a batch. Run the **entire** skill —
+One ticket per run is the default. When the user asks for the whole queue ("review
+everything in Review Ready", "pick them all up"), do not reinterpret that as
+reviewing them in parallel or claiming them as a batch. Run the **entire** skill —
 claim, gate, judge, route, comment — to completion on one ticket, then start over
 from `Before you start` for the next. The board should never show more than one
-ticket in `Grading` because of you.
+ticket in `Reviewing` because of you.
 
 **The fan-out exception does not reach this stage.** `parallel-subagent-implementation`
-exists so `/part2` and `/part3` can widen when the user authorizes it. Grading is
+exists so `/coder` and `/debugger` can widen when the user authorizes it. Reviewing is
 different in kind: the verdict is the product, and a helper that judges on your
 behalf becomes the judge — the one role this skill exists to keep independent and
 uncontaminated. Helpers may fetch a diff or run the gate; only you weigh the rubric
@@ -88,16 +88,16 @@ and route the ticket. No authorization changes that.
 Two habits make this loop reliable:
 
 - **Re-query the queue between tickets, never cache it.** The list you fetched at
-  the start is already stale — `/part3` may have pushed new work into `Grading
-  Ready` while you graded, and a ticket you bounced could have come back. Ask the
+  the start is already stale — `/debugger` may have pushed new work into `Reviewing
+  Ready` while you reviewed, and a ticket you bounced could have come back. Ask the
   tracker again each lap and take the lowest-numbered ticket that is still there.
 - **Route each ticket before touching the next.** A verdict that hasn't moved its
-  ticket isn't delivered, and a half-finished lap left in `Grading` blocks the
+  ticket isn't delivered, and a half-finished lap left in `Reviewing` blocks the
   fleet on a ticket nobody is actually judging.
 
 Stop the loop when the queue comes back empty, when the user's budget is spent,
 or when something blocks the run outright (auth failure, a red gate you cannot
-even execute). Then report every ticket you graded, its verdict, and where it
+even execute). Then report every ticket you reviewed, its verdict, and where it
 landed — one line each. **If the queue is empty at the very start, say so and
 stop.** An empty queue means the fleet is caught up, not that you should go find
 something else to judge.
@@ -111,16 +111,16 @@ Then gather exactly three things, and deliberately nothing else:
 1. **The diff** — the changes attributable to this ticket (its branch/PR, or the
    commit range since it entered Coding).
 2. **The ticket** — What-to-build, Acceptance-criteria, the named invariants, and
-   the `Verification-command` that `/part1` shipped with it.
+   the `Verification-command` that `/planner` shipped with it.
 3. **The project's CONTEXT / invariant docs** — glossary, ADRs, the invariants
    the effort locked. Enter through the **retrieval router** (`ROUTER.md`) if the
-   repo has one, and grade against the *live* decision — an index line marked
+   repo has one, and review against the *live* decision — an index line marked
    superseded means that ADR is not the standard, and failing a diff for
    contradicting a reversed decision is a bad bounce.
 
 ### What you must NOT read
 
-Do not read the `/part2` or `/part3` **handoff doc**, the author's PR
+Do not read the `/coder` or `/debugger` **handoff doc**, the author's PR
 description, its commit messages' justifications, its self-assessment, or any
 sub-agent transcript explaining *why* the code is correct.
 
@@ -139,21 +139,21 @@ whether the author flagged a known follow-up, is fine. Never before.
 Run the ticket's `Verification-command` (plus the project's typecheck/lint if the
 command doesn't already include them).
 
-**If it does not exit 0, stop grading.** Return a fail immediately, routed to
+**If it does not exit 0, stop reviewing.** Return a fail immediately, routed to
 **Debugger Ready**, quoting the failing output. There is no point spending a
-careful judgment pass on code the compiler already rejects, and a grader that
+careful judgment pass on code the compiler already rejects, and a reviewer that
 argues about naming while the suite is red teaches the fleet that the gate is
 optional. Deterministic checks are cheaper, faster, and more reliable than you
 are — let them do their half of the job.
 
-If the ticket has no runnable `Verification-command`, that is a `/part1` defect,
+If the ticket has no runnable `Verification-command`, that is a `/planner` defect,
 not a code defect: route it to **Planned** with that reason.
 
 ## Step 2 — Judge against the rubric
 
 Only now, with a green gate, do the judging that only a model can do. Read
 `references/rubric.md` for the full dimension-by-dimension criteria; it is the
-substance of this step, so read it before forming a verdict rather than grading
+substance of this step, so read it before forming a verdict rather than reviewing
 from memory.
 
 The six dimensions, in the order they should be weighed:
@@ -170,7 +170,7 @@ The six dimensions, in the order they should be weighed:
 Dimensions 1–4 can **block**. Dimensions 5–6 can only **advise** unless the
 violation is severe enough to name a concrete future failure — a duplicated
 permission check that will drift out of sync blocks; an ugly variable name does
-not. This asymmetry matters: a grader empowered to block on taste will block
+not. This asymmetry matters: a reviewer empowered to block on taste will block
 forever, and the fleet will learn to route around it.
 
 ### Verdict shape: binary, with a score as diagnostics only
@@ -211,10 +211,10 @@ be next.
 | **FAIL — scope / tests** | **Agent Ready** | It's not wrong, it's *missing*: an unimplemented acceptance criterion, an invariant with no covering test, tautological tests. |
 | **FAIL — bad ticket** | **Planned** | The ticket is unbuildable as written: contradictory criteria, no `Verification-command`, an invariant that can't be satisfied. Not the coder's fault; don't send it to one. |
 
-Every route is a real Project move out of `Grading`: update the GitHub Project
+Every route is a real Project move out of `Reviewing`: update the GitHub Project
 item's `Status` field and read it back. Labels are not a second state machine. A
 ticket left sitting
-in `Grading` after you've decided is worse than ungraded work — it looks claimed,
+in `Reviewing` after you've decided is worse than unreviewed work — it looks claimed,
 so nothing else will touch it.
 
 That third row is the one fleets forget, and it is the origin of most infinite
@@ -223,27 +223,27 @@ debugger indefinitely, each doing competent work on an impossible task.
 
 ### Bounce budget — how the loop terminates
 
-Track how many times this ticket has been graded (a tracker field, a label, or a
+Track how many times this ticket has been reviewed (a tracker field, a label, or a
 line in the ticket body — whatever the project uses; state which).
 
 - **Bounce 1 and 2** — route normally as above.
 - **Bounce 3** — stop routing. Escalate to the **human**, with the full bounce
-  history: what each grade found, what each fix changed, and your read on why it
+  history: what each review found, what each fix changed, and your read on why it
   isn't converging.
 
-A ticket that has failed three graders is rarely a coding problem. It is usually
+A ticket that has failed three reviewers is rarely a coding problem. It is usually
 an ambiguous acceptance criterion, two invariants in genuine conflict, or a
-grader fixating on something the rubric doesn't actually forbid. More laps will
+reviewer fixating on something the rubric doesn't actually forbid. More laps will
 not surface that; a human looking at the pattern will. Escalating is a success
 condition of this skill, not a failure of it.
 
 ## Step 4 — Record the verdict on the ticket
 
-Post the verdict as a comment on the ticket itself, so the grade is durable and
-the bounce history is reconstructable by the next grader. Use this structure:
+Post the verdict as a comment on the ticket itself, so the review is durable and
+the bounce history is reconstructable by the next reviewer. Use this structure:
 
 ```
-## Grade: PASS | FAIL  (score: NN/100, diagnostic only)
+## Review: PASS | FAIL  (score: NN/100, diagnostic only)
 Bounce: N of 3
 Gate: <verification-command> → exit 0 | exit N
 
@@ -257,26 +257,26 @@ Gate: <verification-command> → exit 0 | exit N
 → <Done | Debugger Ready | Agent Ready | Planned | Human escalation> — <one-line reason>
 ```
 
-Then move the GitHub Project item out of `Grading` to that state and read it back.
+Then move the GitHub Project item out of `Reviewing` to that state and read it back.
 **A verdict that doesn't move the project item has not been delivered** — the board is the fleet's
-shared memory, and a grade that lives only in chat is invisible to the next run.
+shared memory, and a review that lives only in chat is invisible to the next run.
 
-On escalation (bounce 3), leave the ticket in `Grading` and say so explicitly:
+On escalation (bounce 3), leave the ticket in `Reviewing` and say so explicitly:
 it's genuinely stuck mid-judgment awaiting a human, which is exactly what that
 column should then show.
 
 ## Step 5 — Hand off and push (both required)
 
 1. **`handoff`** — write a handoff doc (the project's usual location + the
-   `$TMPDIR` copy): which ticket was graded, PASS/FAIL and score, the blocking
+   `$TMPDIR` copy): which ticket was reviewed, PASS/FAIL and score, the blocking
    findings, where it routed and why, the bounce count, and anything escalated.
 2. **`push-handoff`** — **always run this last.** Read and follow the
-   `push-handoff` skill (`~/.claude/skills/push-handoff/SKILL.md`). `/part4` is
+   `push-handoff` skill (`~/.claude/skills/push-handoff/SKILL.md`). `/reviewer` is
    not complete until push succeeds (or you report an auth blocker with the
    skill's recovery steps). Never commit secrets.
 
-**`/part4` does not fix code.** When it finds a defect it writes it down and
-routes it; it does not open the file and repair it. The moment the grader starts
+**`/reviewer` does not fix code.** When it finds a defect it writes it down and
+routes it; it does not open the file and repair it. The moment the reviewer starts
 authoring fixes it becomes an author, and there is no longer an independent judge
 anywhere in the loop — the one thing this skill exists to provide.
 
@@ -285,7 +285,7 @@ anywhere in the loop — the one thing this skill exists to provide.
 - **Judge blind.** Diff + ticket + invariant docs only. No handoff, no PR
   narrative, no author rationale until after the verdict is written.
 - **Different model, different context** from whoever produced the diff. If that
-  can't be confirmed, say so in the verdict rather than grading anyway.
+  can't be confirmed, say so in the verdict rather than reviewing anyway.
 - **Cheap checks first.** Red gate → immediate fail to Debugger Ready; never
   spend judgment on code the compiler already rejected.
 - **Binary gate, score as diagnostics.** PASS/FAIL comes from named defects. The
@@ -294,21 +294,21 @@ anywhere in the loop — the one thing this skill exists to provide.
   wrong behavior, or it doesn't block.
 - **Route by failure kind** — correctness → Debugger Ready, scope/tests → Agent
   Ready, bad ticket → Planned. Never one default lane.
-- **Move the project item**: `Grading Ready` → `Grading` before you read
+- **Move the project item**: `Review Ready` → `Reviewing` before you read
   the diff → its routed state after the verdict, updating and reading back the
-  Project `Status` every time, and **only for the ticket you're grading**. See
+  Project `Status` every time, and **only for the ticket you're reviewing**. See
   `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - **Only you may set `Done`.** No other stage closes tickets; don't let one talk
   you into treating its handoff as a verdict.
 - **Drain the queue serially when asked for "all of them"** — full skill per
   ticket, re-query the board between laps, never more than one ticket in
-  `Grading` at a time.
-- **Escalate at bounce 3.** Three failed grades is a human problem; another lap
+  `Reviewing` at a time.
+- **Escalate at bounce 3.** Three failed reviews is a human problem; another lap
   won't find it.
-- **Never fix what you grade.** Findings and routing only.
+- **Never fix what you review.** Findings and routing only.
 - **Taste advises, it doesn't block** — unless you can name the concrete future
   failure it causes.
-- End with a short summary: the ticket graded, PASS/FAIL + score, blocking
+- End with a short summary: the ticket reviewed, PASS/FAIL + score, blocking
   findings, **the Project `Status` you moved it to**, the bounce count, the
   **pushed commit hash**, and the remote branch — omitting the routing or the push
   means the run failed.

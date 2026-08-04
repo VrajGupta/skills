@@ -6,7 +6,7 @@ description: Deliver a ticket under explicit external constraints — token/spen
 
 # controlled-ticket-delivery
 
-`part2` assumes a normal environment. This skill is for when it isn't — when the constraint, not the code, decides how the work ships.
+`coder` assumes a normal environment. This skill is for when it isn't — when the constraint, not the code, decides how the work ships.
 
 ## Step 1 — Name the constraints explicitly
 
@@ -27,7 +27,7 @@ State the resolved set back to the user in one block before implementing.
 
 | Situation | Path |
 |---|---|
-| Full authority, normal ticket | Standard `part2` |
+| Full authority, normal ticket | Standard `coder` |
 | No push authority | Implement + commit locally, write handoff, report. **Do not push.** |
 | No commit authority | Implement, verify, leave the tree dirty, write a handoff describing exactly what to stage |
 | No project write | **Local handoff file** (template below). Never substitute labels or issue closure for a missing Project `Status` write. |
@@ -84,4 +84,4 @@ Write it to the project's handoff location. Say clearly in your report that the 
 
 ## Related
 
-`part2` · `push-handoff` · `state-driven-pipeline-recovery` · `github-projects-pipeline` · `provider-integration-tdd`
+`coder` · `push-handoff` · `state-driven-pipeline-recovery` · `github-projects-pipeline` · `provider-integration-tdd`

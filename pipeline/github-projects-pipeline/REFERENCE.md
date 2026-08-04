@@ -13,7 +13,7 @@ GitHub CLI. This is the evidence behind `SKILL.md`; it is not a second tracker.
   IDs. Writes require the CLI `project` scope.
 - GitHub's built-in workflows default closed issues and merged pull requests to
   `Done`. That automation must be reviewed or disabled when only the independent
-  grader is allowed to set `Done`.
+  reviewer is allowed to set `Done`.
 - Project views can filter by status, assignee, labels, repository, and other
   project fields; saved views are useful for each stage queue.
 

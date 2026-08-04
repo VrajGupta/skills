@@ -24,10 +24,10 @@ guarantees it holds itself to.
 bin/vskills.js       the vskills CLI entrypoint (see "Installing with vskills" above)
 src/             vskills's implementation
 test/            vskills's test suite (node --test)
-part1/           planning chain     (batch design grill -> spec -> tickets -> handoff)
-part2/           implementation     (next ticket -> TDD -> self-check -> handoff)
-part3/           debug/harden       (four-net audit -> red-team the corners -> fix -> handoff)
-part4/           grade/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
+planner/           planning chain     (batch design grill -> spec -> tickets -> handoff)
+coder/           implementation     (next ticket -> TDD -> self-check -> handoff)
+debugger/           debug/harden       (four-net audit -> red-team the corners -> fix -> handoff)
+reviewer/           review/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
 push-handoff/    verified, explicitly authorized git commit/push closeout
 loop-engineer/   maker/checker loop engineering (closed-loop task runner)
 pipeline/        the delivery-factory skills: tracker stage protocol, the four roles,
@@ -39,39 +39,39 @@ mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored b
 
 ## pipeline/ — running work as a factory
 
-`part1/2/3/4` are the chains you run, one per pipeline stage, each on a different
+`planner/2/3/4` are the chains you run, one per pipeline stage, each on a different
 model so no stage ever reviews its own work:
 
 ```
-Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Grading Ready -> Grading -> Done
-   part1        |          part2         |             part3          |            part4
+Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Review Ready -> Reviewing -> Done
+   planner        |          coder         |             debugger          |            reviewer
 ```
 
-`part4` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
+`reviewer` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
 invariants only, never the author's handoff — because a confident rationale from the
-author is the strongest thing that corrupts a review. A failed grade routes by *kind*
+author is the strongest thing that corrupts a review. A failed review routes by *kind*
 (correctness -> Debugger Ready, missing scope or tests -> Agent Ready, unbuildable ticket ->
-Planned), and a third failed grade escalates to a human instead of looping forever.
+Planned), and a third failed review escalates to a human instead of looping forever.
 
 ### Stage-parent harness profile
 
 The fleet runs as a serial four-stage workflow. GPT-5.6 Luna is the overall
 coordinator; it may dispatch Opus 5 in the Claude Code harness for planning after
 planning decisions are supplied. Kimi, Codex, and Grok run as independent top-level
-stage-parent sessions for `/part2`, `/part3`, and `/part4`. A stage parent is the
+stage-parent sessions for `/coder`, `/debugger`, and `/reviewer`. A stage parent is the
 chat/session running its stage; it may coordinate one level of helpers when its
 harness supports that. A native child launched from another session must not spawn
 nested children.
 
 | Stage | Stage parent | Harness / route | Effort |
 |---|---|---|---|
-| `/part1` | Opus 5, Luna-dispatched or visible | Claude Code harness using the Claude subscription | medium/high |
-| `/part2` | Kimi K3 | Pi harness via OpenRouter | high |
-| `/part3` | GPT-5.6 Luna | Codex harness using the Codex subscription | **max** |
-| `/part4` | Grok 4.5 | Pi harness via OpenRouter | high/xhigh |
+| `/planner` | Opus 5, Luna-dispatched or visible | Claude Code harness using the Claude subscription | medium/high |
+| `/coder` | Kimi K3 | Pi harness via OpenRouter | high |
+| `/debugger` | GPT-5.6 Luna | Codex harness using the Codex subscription | **max** |
+| `/reviewer` | Grok 4.5 | Pi harness via OpenRouter | high/xhigh |
 
-Part2 may use Kimi K2.7 Code helpers and part3 may use reviewer helpers, but only
-inside their independent top-level stage-parent sessions. Part4's final grader must
+Coder may use Kimi K2.7 Code helpers and debugger may use auditor helpers, but only
+inside their independent top-level stage-parent sessions. Reviewer's final reviewer must
 remain blind and may receive only the ticket, diff, gate, and invariant docs. The
 GitHub Project item, GitHub issue, git, and handoffs—not chat history—connect the
 stage parents. `max` is a reasoning
@@ -89,7 +89,7 @@ The stage protocol itself lives in [`pipeline/github-projects-pipeline`](pipelin
 exact Project `Status` options, who may move what, re-read after every write, how to
 use `gh project`, and how to run every stage with no project at all.
 
-`part1/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
+`planner/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
 ticket moves between stages, who is allowed to move it, and what counts as proof.
 
 | Skill | Use when |
@@ -99,7 +99,7 @@ ticket moves between stages, who is allowed to move it, and what counts as proof
 | `specialist-profiles` | Build/verify the planner, coder, debugger roles so maker != checker is structural |
 | `state-driven-pipeline-recovery` | The pipeline is thrashing or reporting false greens |
 | `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
-| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `part2` invokes |
+| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `coder` invokes |
 | `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts |
 | `invariant-evidence-review` | Is an invariant actually enforced, or only documented? |
 | `codebase-audit` | Audit a whole system rather than one diff |
@@ -113,15 +113,15 @@ The load-bearing rule across all of them: **done is a locked verification comman
 actually run after the final change**, plus an independent checker for non-trivial work,
 plus truthful tracker state.
 
-## part1 / part2 / part3 / loop-engineer — use as a workflow
+## planner / coder / debugger / loop-engineer — use as a workflow
 
 These four are meant to be run **as a pipeline**, in order, on the same repo:
 
-1. **`/part1`** — take a new idea/feature/ADR from grilling through a locked spec
+1. **`/planner`** — take a new idea/feature/ADR from grilling through a locked spec
    and dependency-ordered tickets, then push a handoff.
-2. **`/part2`** — pick up the next unblocked ticket, build it test-first, red-team
-   it against the invariants `/part1` locked, then push a handoff.
-3. **`/part3`** — the loop-closer. The Codex Luna stage parent audits the directory
+2. **`/coder`** — pick up the next unblocked ticket, build it test-first, red-team
+   it against the invariants `/planner` locked, then push a handoff.
+3. **`/debugger`** — the loop-closer. The Codex Luna stage parent audits the directory
    for bugs/weak tests, fixes them test-first, may use a fresh-eyes helper inside its
    own top-level session, and pushes a handoff.
 4. **`/loop-engineer`** — wraps any of the above (or any coding task) in a closed
@@ -129,7 +129,7 @@ These four are meant to be run **as a pipeline**, in order, on the same repo:
    until the goal is verifiably met instead of stopping after one pass.
 
 You don't have to run them together — each is a standalone skill and works fine
-on its own. But `part1 -> part2 -> part3` is the intended round trip: plan it,
+on its own. But `planner -> coder -> debugger` is the intended round trip: plan it,
 build it, close the loop. Drop `loop-engineer` around any stage where you want
 iteration to continue until a checker says done.
 

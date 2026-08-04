@@ -1,14 +1,14 @@
 ---
 name: profile-gated-delivery
 version: 1.0.0
-description: Run a multi-stage effort across the planner, coder, debugger, and grader roles with an evidence gate between every stage, so no stage may start until the previous stage's proof exists and the maker of a change is never its grader. Use when driving an effort end to end through separate top-level stage-parent sessions, when coordinating role handoffs, or when the user wants the full idea → Done factory run rather than a single stage.
+description: Run a multi-stage effort across the planner, coder, debugger, and reviewer roles with an evidence gate between every stage, so no stage may start until the previous stage's proof exists and the maker of a change is never its reviewer. Use when driving an effort end to end through separate top-level stage-parent sessions, when coordinating role handoffs, or when the user wants the full idea → Done factory run rather than a single stage.
 ---
 
 # profile-gated-delivery
 
-The whole factory in one skill: **planner → coder → debugger → grader**, with an evidence gate between each stage.
+The whole factory in one skill: **planner → coder → debugger → reviewer**, with an evidence gate between each stage.
 
-The point is not the stages. It is that **each stage's entry condition is the previous stage's proof** — and that the maker of a change is never its grader.
+The point is not the stages. It is that **each stage's entry condition is the previous stage's proof** — and that the maker of a change is never its reviewer.
 
 ## Stage-parent sessions
 
@@ -21,7 +21,7 @@ independent top-level parent sessions for the remaining stages:
 | **planner** | Opus 5 / Claude Code subscription, Luna-dispatched or visible | medium/high |
 | **coder** | Kimi K3 / Pi via OpenRouter; optional Kimi K2.7 Code helpers | high |
 | **debugger** | GPT-5.6 Luna / Codex subscription | **max** |
-| **grader** | Grok 4.5 / Pi via OpenRouter | high/xhigh |
+| **reviewer** | Grok 4.5 / Pi via OpenRouter | high/xhigh |
 
 A stage parent may coordinate one level of helpers when its own harness supports it.
 A native child launched from another session cannot spawn nested children. The
@@ -33,10 +33,10 @@ stages serial and one ticket in flight.
 
 | Role | Queue | Loads | Produces | State effect |
 |---|---|---|---|---|
-| **planner** | Planned | `github-projects-pipeline` → `part1` | plan doc and ready tickets | Planned → Agent Ready when blockers are done |
-| **coder** | Agent Ready | `github-projects-pipeline` → `part2` | code, tests, commit, evidence | Coding → Debugger Ready |
-| **debugger** | Debugger Ready | `github-projects-pipeline` → `part3` | hardened diff, evidence, follow-ups | Debugging → Grading Ready |
-| **grader** | Grading Ready | `github-projects-pipeline` → `part4` | blind verdict and routing | Grading → Done or bounce |
+| **planner** | Planned | `github-projects-pipeline` → `planner` | plan doc and ready tickets | Planned → Agent Ready when blockers are done |
+| **coder** | Agent Ready | `github-projects-pipeline` → `coder` | code, tests, commit, evidence | Coding → Debugger Ready |
+| **debugger** | Debugger Ready | `github-projects-pipeline` → `debugger` | hardened diff, evidence, follow-ups | Debugging → Review Ready |
+| **reviewer** | Review Ready | `github-projects-pipeline` → `reviewer` | blind verdict and routing | Reviewing → Done or bounce |
 
 The human owns two things no agent may take: **creating the effort in Planned** and **canceling**. The planner promotes a child from Planned → Agent Ready only when its blockers are Done. Spend, deploy, and purchase are separately authorized at any stage.
 
@@ -62,21 +62,21 @@ A child without a runnable gate does not enter the coder queue. Send it back to 
 - [ ] Unrelated dirty files untouched
 - [ ] Ticket moved Coding → Debugger Ready, **readback confirmed**
 
-**Gate 4 — hardening is proven.** Before grading:
+**Gate 4 — hardening is proven.** Before reviewing:
 - [ ] The debugger re-ran the gate **itself**
 - [ ] Broader verify proportional to the change
-- [ ] Four nets and the named corners were swept (`part3`)
-- [ ] Ticket moved Debugging → Grading Ready, **readback confirmed**
+- [ ] Four nets and the named corners were swept (`debugger`)
+- [ ] Ticket moved Debugging → Review Ready, **readback confirmed**
 
 **Gate 5 — independent acceptance.** Before a ticket is Done:
-- [ ] The grader re-ran the gate itself
-- [ ] The grader used a fresh model/context and did not read maker handoffs before judging
+- [ ] The reviewer re-ran the gate itself
+- [ ] The reviewer used a fresh model/context and did not read maker handoffs before judging
 - [ ] Verdict is PASS or a classified bounce
-- [ ] Only the grader moves Grading → Done
+- [ ] Only the reviewer moves Reviewing → Done
 
 ## Maker ≠ checker
 
-Whenever tooling allows, the author and the grader are **different contexts**:
+Whenever tooling allows, the author and the reviewer are **different contexts**:
 
 - Different subagent / session, given only the ticket, the diff, and the gate — **not the maker's self-story**.
 - The maker's summary is a claim. The checker's re-run is evidence.
@@ -92,7 +92,7 @@ For each unit of work, in order:
 3. Planner run → check Gate 2.
 4. Coder run on the **oldest unblocked** Agent Ready child → check Gate 3.
 5. Debugger run → check Gate 4.
-6. Grader run → Gate 5. On a bounce, route by failure kind and repeat only the required stage.
+6. Reviewer run → Gate 5. On a bounce, route by failure kind and repeat only the required stage.
 7. Repeat per child until every ticket is Done or human escalation is required.
 
 **One item per run** unless the user authorizes a batch — then `subagent-batch-implementation` with lanes, and the parent still holds every gate.
@@ -121,4 +121,4 @@ If the pipeline is already thrashing, load `state-driven-pipeline-recovery`.
 
 ## Related
 
-`github-projects-pipeline` · `part1` · `part2` · `part3` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`
+`github-projects-pipeline` · `planner` · `coder` · `debugger` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`

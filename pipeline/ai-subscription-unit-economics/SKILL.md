@@ -80,7 +80,7 @@ In rough order of preference:
 
 ## Step 5 — Encode the result as invariants
 
-Feed these into `part1`'s invariant lock so they become testable, not aspirational:
+Feed these into `planner`'s invariant lock so they become testable, not aspirational:
 
 ```
 - Cost per <action> must not exceed $X at p95 (measured, with a test/monitor)
@@ -102,4 +102,4 @@ An unenforced cap is a wish. Each of these needs an enforcement point and a sign
 
 ## Related
 
-`part1` (invariant lock) · `invariant-evidence-review` · `controlled-ticket-delivery` · `claude-api`
+`planner` (invariant lock) · `invariant-evidence-review` · `controlled-ticket-delivery` · `claude-api`

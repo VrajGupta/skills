@@ -37,14 +37,14 @@ The project must have one `Status` single-select field with these options:
 
 ```text
 Planned, Agent Ready, Coding, Debugger Ready, Debugging,
-Grading Ready, Grading, Done, Canceled, Duplicate
+Review Ready, Reviewing, Done, Canceled, Duplicate
 ```
 
 Labels remain useful for category and triage (`bug`, `enhancement`,
 `needs-triage`, `ready-for-agent`), but labels are not a second stage machine.
 Issue open/closed state is not the pipeline stage. Review built-in project workflows:
 GitHub can set `Done` when an issue closes or a pull request merges, which must be
-disabled or constrained when only the independent grader may set `Done`.
+disabled or constrained when only the independent reviewer may set `Done`.
 
 Inspect live field and option IDs before scripting a mutation:
 

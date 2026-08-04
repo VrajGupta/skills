@@ -1,12 +1,12 @@
 ---
 name: ticket-implementation-tdd
 version: 1.0.0
-description: Strict one-ticket TDD for pipeline work — lock the Verification-command before editing, drive red-green at the highest meaningful seam, keep provider calls behind test-safe seams that the production path actually uses, and finish with native checks (typecheck, lint, build) plus the gate re-run. Use when implementing a Coding ticket, especially one touching external providers, persistence, or auth, and whenever part2 needs the detailed implementation loop.
+description: Strict one-ticket TDD for pipeline work — lock the Verification-command before editing, drive red-green at the highest meaningful seam, keep provider calls behind test-safe seams that the production path actually uses, and finish with native checks (typecheck, lint, build) plus the gate re-run. Use when implementing a Coding ticket, especially one touching external providers, persistence, or auth, and whenever coder needs the detailed implementation loop.
 ---
 
 # ticket-implementation-tdd
 
-The detailed maker loop `part2` invokes. One ticket. Gate first. Real seams.
+The detailed maker loop `coder` invokes. One ticket. Gate first. Real seams.
 
 ## Step 1 — Lock the gate BEFORE editing
 
@@ -86,4 +86,4 @@ Invariants: <held / unproven>
 
 ## Related
 
-`part2` · `tdd` · `provider-integration-tdd` · `invariant-evidence-review` · `shared-worktree-safety`
+`coder` · `tdd` · `provider-integration-tdd` · `invariant-evidence-review` · `shared-worktree-safety`

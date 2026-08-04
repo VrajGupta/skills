@@ -1,7 +1,7 @@
 ---
 name: invariant-evidence-review
 version: 1.0.0
-description: Audit whether a project's stated invariants are actually ENFORCED and MEASURED in the shipped path, rather than merely mentioned in a plan or asserted in a comment — for each invariant find the enforcement point, the test that proves it, and the signal that would catch its violation in production. Use when reviewing a diff against locked invariants, as net 3 of part3's audit, before accepting a security/performance/privacy claim, or when the user asks whether a constraint is real.
+description: Audit whether a project's stated invariants are actually ENFORCED and MEASURED in the shipped path, rather than merely mentioned in a plan or asserted in a comment — for each invariant find the enforcement point, the test that proves it, and the signal that would catch its violation in production. Use when reviewing a diff against locked invariants, as net 3 of debugger's audit, before accepting a security/performance/privacy claim, or when the user asks whether a constraint is real.
 ---
 
 # invariant-evidence-review
@@ -81,4 +81,4 @@ Verdicts: **enforced** (all three columns real) · **documented-only** (no enfor
 
 ## Related
 
-`part3` · `part1` (locks the invariants) · `provider-integration-tdd` · `code review` workflows
+`debugger` · `planner` (locks the invariants) · `provider-integration-tdd` · `code review` workflows

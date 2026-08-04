@@ -6,7 +6,7 @@ description: Full-stack audit methodology for a whole codebase or app rather tha
 
 # codebase-audit
 
-`part3` audits a diff. This audits **a system**. The output is a ranked, ticketed backlog — not an essay.
+`debugger` audits a diff. This audits **a system**. The output is a ranked, ticketed backlog — not an essay.
 
 ## Step 1 — Boundary and baseline
 
@@ -101,4 +101,4 @@ The **"not investigated"** section is mandatory. An audit that implies total cov
 
 ## Related
 
-`part3` · `invariant-evidence-review` · `provider-integration-tdd` · `to-issues` · `improve-codebase-architecture`
+`debugger` · `invariant-evidence-review` · `provider-integration-tdd` · `to-issues` · `improve-codebase-architecture`

@@ -1,7 +1,7 @@
 ---
 name: github-projects-pipeline
 version: 1.0.0
-description: The stage protocol for GitHub Projects — GitHub Projects is the workflow authority, GitHub issues are durable tickets, and work moves Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done through separate stage-parent sessions. Use when creating, claiming, moving, or grading pipeline work on a GitHub Project, and load it before part1/part2/part3/part4.
+description: The stage protocol for GitHub Projects — GitHub Projects is the workflow authority, GitHub issues are durable tickets, and work moves Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done through separate stage-parent sessions. Use when creating, claiming, moving, or reviewing pipeline work on a GitHub Project, and load it before planner/coder/debugger/reviewer.
 ---
 
 # github-projects-pipeline — stage protocol
@@ -14,7 +14,7 @@ code evidence. There is no second tracker to mirror.
 ## Stage-parent session profile
 
 GPT-5.6 Luna is the overall coordinator; it may dispatch Opus 5 in Claude Code for
-`/part1` after the planning decisions are known. `/part2`, `/part3`, and `/part4`
+`/planner` after the planning decisions are known. `/coder`, `/debugger`, and `/reviewer`
 normally run as independent top-level stage-parent sessions. The workflow uses the
 GitHub Project item, GitHub issue/PR artifacts, and handoffs to bridge those sessions.
 A native child launched from another session is not a stage parent and must not spawn
@@ -22,15 +22,15 @@ nested children.
 
 | Stage | Parent session | Harness / route | Effort |
 |---|---|---|---|
-| `/part1` | Opus 5, Luna-dispatched or visible | Claude Code with Claude subscription | medium/high |
-| `/part2` | Kimi K3 | Pi via OpenRouter; optional Kimi K2.7 Code helpers | high |
-| `/part3` | GPT-5.6 Luna | Codex with Codex subscription | **max** |
-| `/part4` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
+| `/planner` | Opus 5, Luna-dispatched or visible | Claude Code with Claude subscription | medium/high |
+| `/coder` | Kimi K3 | Pi via OpenRouter; optional Kimi K2.7 Code helpers | high |
+| `/debugger` | GPT-5.6 Luna | Codex with Codex subscription | **max** |
+| `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
 
 Do not route a Claude subscription through Pi. Do not confuse the native Codex route
 (`codex`, `gpt-5.6-luna`) with Pi/OpenRouter (`pi`,
 `openrouter/openai/gpt-5.6-luna`). `max` is reasoning effort, not a model name.
-A headless Opus child must receive `/part1` decisions in advance because it cannot
+A headless Opus child must receive `/planner` decisions in advance because it cannot
 ask the human; use a visible Claude session for an interactive grill.
 
 In this environment, super.engineering owns managed worktrees, target/base branches,
@@ -72,8 +72,8 @@ Agent Ready
 Coding
 Debugger Ready
 Debugging
-Grading Ready
-Grading
+Review Ready
+Reviewing
 Done
 Canceled
 Duplicate
@@ -97,7 +97,7 @@ gh project field-create <PROJECT_NUMBER> \
   --owner <PROJECT_OWNER> \
   --name Status \
   --data-type SINGLE_SELECT \
-  --single-select-options 'Planned,Agent Ready,Coding,Debugger Ready,Debugging,Grading Ready,Grading,Done,Canceled,Duplicate'
+  --single-select-options 'Planned,Agent Ready,Coding,Debugger Ready,Debugging,Review Ready,Reviewing,Done,Canceled,Duplicate'
 ```
 
 Do not create a duplicate `Status` field when the project already has one. Prefer
@@ -109,27 +109,27 @@ project; fetch the live project configuration.
 
 | Status option | Category | Meaning |
 |---|---|---|
-| Planned | backlog | Human-approved idea or ticket awaiting planning, or a grader bounce because the ticket is unbuildable |
+| Planned | backlog | Human-approved idea or ticket awaiting planning, or a reviewer bounce because the ticket is unbuildable |
 | Agent Ready | unstarted | Ready for the next stage to claim |
 | Coding | started | The coder is implementing the one claimed ticket |
 | Debugger Ready | started | Coder's gate passed; waiting for independent debugging |
 | Debugging | started | Debugger is actively auditing and hardening |
-| Grading Ready | started | Debugger's gate passed; waiting for independent grading |
-| Grading | started | Grader is actively judging the diff |
-| Done | completed | Graded and accepted; only the grader may set this |
+| Review Ready | started | Debugger's gate passed; waiting for independent reviewing |
+| Reviewing | started | Reviewer is actively judging the diff |
+| Done | completed | Reviewed and accepted; only the reviewer may set this |
 | Canceled | canceled | Human kill switch |
 | Duplicate | canceled | Points to another GitHub issue |
 
 The exact forward path is:
 
 ```text
-Planned → Agent Ready → Coding → Debugger Ready → Debugging → Grading Ready → Grading → Done
+Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
 ```
 
 Issue open/closed state is **not** the pipeline stage. The Project `Status` field is.
 If built-in automation is enabled, inspect it before relying on it: GitHub enables
 workflows that set `Done` when an issue closes or a pull request merges. Disable or
-change those workflows if only `/part4` may set `Done`.
+change those workflows if only `/reviewer` may set `Done`.
 
 ## 3. Who may move what
 
@@ -142,14 +142,14 @@ change those workflows if only `/part4` may set `Done`.
 | Coder | Agent Ready → Coding | The one ticket being built |
 | Coder | Coding → Debugger Ready | The one ticket's gate passes |
 | Debugger | Debugger Ready → Debugging | Audit starts |
-| Debugger | Debugging → Grading Ready | Red-team pass is complete and gate passes |
-| Grader | Grading Ready → Grading | Judgment starts, before reading the diff |
-| Grader | Grading → Done | PASS: gate green and no blocking finding |
-| Grader | Grading → Debugger Ready | FAIL: correctness finding |
-| Grader | Grading → Agent Ready | FAIL: missing scope or tests |
-| Grader | Grading → Planned | FAIL: ticket is unbuildable as written |
+| Debugger | Debugging → Review Ready | Red-team pass is complete and gate passes |
+| Reviewer | Review Ready → Reviewing | Judgment starts, before reading the diff |
+| Reviewer | Reviewing → Done | PASS: gate green and no blocking finding |
+| Reviewer | Reviewing → Debugger Ready | FAIL: correctness finding |
+| Reviewer | Reviewing → Agent Ready | FAIL: missing scope or tests |
+| Reviewer | Reviewing → Planned | FAIL: ticket is unbuildable as written |
 
-Nobody skips states. Only the grader sets `Done`.
+Nobody skips states. Only the reviewer sets `Done`.
 
 `Planned` is the blocked or unplanned queue; `Agent Ready` is claimable. A ticket
 whose blockers are not done stays in `Planned`. A ticket in `Agent Ready` can be
@@ -234,7 +234,7 @@ authorizes it; use `subagent-batch-implementation` or
 Draining a queue is serial, not a batch claim. When asked to work all items in a
 status, claim one, finish its stage, read it back, then re-query the project before
 taking the next. At no moment should more than one item sit in `Coding`, `Debugging`,
-or `Grading` for the same stage parent.
+or `Reviewing` for the same stage parent.
 
 ## 7. Issue comments and code evidence
 
@@ -268,9 +268,9 @@ Use a project `Priority` single-select or number field if the project has one:
 | 3 / Medium | Default | Planner-created work |
 | 4 / Low | Nice to have | Defer when capacity is limited |
 
-Track the grade count in a project number field, issue label, or handoff. On the
-third failed grade, stop routing and escalate to the human with the full history.
-Three failed grades usually mean ambiguous criteria, conflicting invariants, or a
+Track the review count in a project number field, issue label, or handoff. On the
+third failed review, stop routing and escalate to the human with the full history.
+Three failed reviews usually mean ambiguous criteria, conflicting invariants, or a
 rubric problem rather than a missing code attempt.
 
 ## 9. No project or failed mutation
@@ -297,11 +297,11 @@ Before ending any pipeline run:
 - [ ] Issue comment contains real evidence and the project readback
 - [ ] No label is being treated as workflow state
 - [ ] Commit trailer uses #<issue-number> or OWNER/REPO#<number>
-- [ ] Only /part4 moved a ticket to Done
+- [ ] Only /reviewer moved a ticket to Done
 ```
 
 ## Related
 
-`part1` · `part2` · `part3` · `part4` · `profile-gated-delivery` ·
+`planner` · `coder` · `debugger` · `reviewer` · `profile-gated-delivery` ·
 `specialist-profiles` · `state-driven-pipeline-recovery` ·
 `subagent-batch-implementation`

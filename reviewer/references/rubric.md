@@ -1,6 +1,6 @@
-# /part4 grading rubric
+# /reviewer review rubric
 
-The six dimensions in judging order. Read this before forming a verdict — grading
+The six dimensions in judging order. Read this before forming a verdict — reviewing
 from memory produces vague findings, and vague findings bounce tickets forever
 without ever telling anyone what to change.
 
@@ -13,7 +13,7 @@ without ever telling anyone what to change.
 - [5. Domain fit (advisory, blocking only on drift risk)](#5-domain-fit-advisory-blocking-only-on-drift-risk)
 - [6. Craft (advisory)](#6-craft-advisory)
 - [Scoring](#scoring)
-- [Calibration: what a good grader looks like](#calibration-what-a-good-grader-looks-like)
+- [Calibration: what a good reviewer looks like](#calibration-what-a-good-reviewer-looks-like)
 
 ## How to use this rubric
 
@@ -50,7 +50,7 @@ block only if the extra work touches an invariant the ticket didn't cover.
 
 ## 2. Invariant integrity (blocking)
 
-For each invariant `/part1` locked and the ticket restated, decide whether **this
+For each invariant `/planner` locked and the ticket restated, decide whether **this
 code** honors it. This requires reading, not grepping — an invariant is honored
 by behavior, not by the presence of a keyword.
 
@@ -103,7 +103,7 @@ the test is honest. If it's "most of it," it isn't.
 ## 4. Corner behavior (blocking)
 
 Attack the corners agent-written code reliably fails in. Do not re-run the happy
-path — the suite already covers it, and re-verifying it is how graders spend
+path — the suite already covers it, and re-verifying it is how reviewers spend
 their whole budget confirming what's already known.
 
 - **Inputs**: empty, null/undefined, zero, negative, oversized, wrong-type,
@@ -141,10 +141,10 @@ Refactor smells: mysterious names, duplicated code, feature envy, data clumps,
 primitive obsession, repeated switches, divergent change, speculative generality,
 message chains, middleman.
 
-These are **advisory by default and should stay that way.** A grader that blocks
+These are **advisory by default and should stay that way.** A reviewer that blocks
 on taste will block indefinitely — every diff has smells, the coder will fix the
 named ones and introduce others, and the ticket never closes while the fleet
-learns to treat grading as noise. Promote a smell to blocking only when you can
+learns to treat reviewing as noise. Promote a smell to blocking only when you can
 name the concrete future failure: "this permission check is duplicated in three
 files; when one changes, the others silently authorize" is a defect. "This
 function is long" is not.
@@ -163,7 +163,7 @@ makes the decision — see the SKILL for why calibration makes it unfit as a gat
 Score the diff against **this ticket's** scope. A small correct diff is a 95, not
 a 70 for being small.
 
-## Calibration: what a good grader looks like
+## Calibration: what a good reviewer looks like
 
 **Too lenient** looks like: passing because the tests are green and the code
 reads well; accepting "handled" without checking what the handler does; treating
@@ -173,10 +173,10 @@ the defect ships, and everything built on top inherits it.
 **Too strict** looks like: blocking on style, on preferred architecture, on tests
 the ticket never asked for; writing findings like "consider whether this is
 robust." The cost is churn — real tokens spent on cosmetic edits, and a fleet
-that learns to ignore the grader.
+that learns to ignore the reviewer.
 
 The calibration to hold: **block on what you can prove, advise on what you
-suspect, and say plainly which is which.** A grader that passes a diff with three
+suspect, and say plainly which is which.** A reviewer that passes a diff with three
 honest advisory notes is doing better work than one that fails it with three
 unfalsifiable ones.
 

@@ -9,7 +9,7 @@ Loop engineering ("loopcraft") is stacking feedback loops around an agent. Each 
 | Loop | What it adds | In Claude Code terms |
 |------|--------------|----------------------|
 | **1. Agent loop** | A model calling tools in a loop until a task is complete. | The base session — Claude reading, editing, running commands. |
-| **2. Verification loop** | A checker grades output against a rubric; failures go back to the maker with feedback. Trades latency for reliability. | The maker→checker loop in `SKILL.md`. Prefer a separate top-level stage-parent session (or a one-level child of that parent) as the checker for true fresh-eyes grading; native children must not spawn nested children. |
+| **2. Verification loop** | A checker reviews output against a rubric; failures go back to the maker with feedback. Trades latency for reliability. | The maker→checker loop in `SKILL.md`. Prefer a separate top-level stage-parent session (or a one-level child of that parent) as the checker for true fresh-eyes reviewing; native children must not spawn nested children. |
 | **3. Event-driven loop** | The agent runs on triggers (cron, webhook, message) instead of manual invocation. | The `/loop` and `/schedule` skills, or `ScheduleWakeup`. |
 | **4. Hill-climbing loop** | Production traces feed an analysis pass that improves the harness (prompts, tools, rubric). Compounding gains. | Post-run: update the rubric, add the missing test, write a memory/skill. |
 
@@ -17,10 +17,10 @@ Human oversight is preserved at every level: sensitive tool calls need approval,
 
 ## Why the maker/checker split matters
 
-A model grading its own work is biased toward declaring success. Reliability comes from separating the role that *produces* from the role that *judges*:
+A model reviewing its own work is biased toward declaring success. Reliability comes from separating the role that *produces* from the role that *judges*:
 
 - **Maker** — optimizes for progress toward the goal. Writes the test, makes the change.
-- **Checker** — optimizes for catching failure. Re-runs the done-condition command, re-reads the actual diff, grades against the rubric, and returns either PASS or a list of specific failing bullets with a concrete next action.
+- **Checker** — optimizes for catching failure. Re-runs the done-condition command, re-reads the actual diff, reviews against the rubric, and returns either PASS or a list of specific failing bullets with a concrete next action.
 
 For high-stakes loops, make the checker a *separate context* (a sub-agent or `/code-review`) so it can't see the maker's reasoning and inherit its blind spots.
 

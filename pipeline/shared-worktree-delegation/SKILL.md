@@ -1,7 +1,7 @@
 ---
 name: shared-worktree-delegation
 version: 1.1.0
-description: Safely fan out subagent tasks into one shared git checkout — assign explicit file lanes, forbid subagent commits/pushes by default, and have the parent re-run every gate because subagent summaries are claims not evidence. Use when delegating implementation work to subagents that share a worktree, when writing a subagent brief, or when a parent agent must grade returned work. Prefer separate worktrees when the work genuinely conflicts.
+description: Safely fan out subagent tasks into one shared git checkout — assign explicit file lanes, forbid subagent commits/pushes by default, and have the parent re-run every gate because subagent summaries are claims not evidence. Use when delegating implementation work to subagents that share a worktree, when writing a subagent brief, or when a parent agent must review returned work. Prefer separate worktrees when the work genuinely conflicts.
 ---
 
 # shared-worktree-delegation

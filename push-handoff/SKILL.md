@@ -1,14 +1,14 @@
 ---
 name: push-handoff
-version: 2.1.0
+version: 2.1.1
 description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final step of part1/part2/part3, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 
-# push-handoff â€” authorized commit & push of verified work
+# push-handoff — authorized commit & push of verified work
 
 The last step of a chain, and the one most likely to produce a **false claim**. "Pushed" is a fact about a remote, not a feeling about a command.
 
-## Step 0 â€” Authority check
+## Step 0 — Authority check
 
 Push only when one of these is true:
 
@@ -18,7 +18,7 @@ Push only when one of these is true:
 
 If none hold: **stop, write the handoff to disk, and report that push needs authorization.** Do not push "to be helpful."
 
-## Step 1 â€” Verify before you commit
+## Step 1 — Verify before you commit
 
 Never push unverified work.
 
@@ -43,23 +43,23 @@ scores against a catalogue that no longer describes the shelf, opens the wrong
 file, and trusts it. Where the repo ships a `--check` mode, run that instead and
 regenerate only if it reports drift.
 
-## Step 2 â€” Stage narrowly
+## Step 2 — Stage narrowly
 
 ```powershell
 git status -sb
 ```
 
 - Stage **only** paths this ticket owns.
-- **Unrelated dirty files are sacred** â€” someone else may be mid-edit in a shared worktree. Never `git add -A` / `git add .`.
+- **Unrelated dirty files are sacred** — someone else may be mid-edit in a shared worktree. Never `git add -A` / `git add .`.
 - Sweep for junk before staging: duplicate `file 2.ts` artifacts from sloppy tools, stray build output, editor temp files.
-- **Scan the diff for secrets** â€” keys, tokens, `.env` contents, connection strings. A pushed secret is a rotation incident, not an oops.
+- **Scan the diff for secrets** — keys, tokens, `.env` contents, connection strings. A pushed secret is a rotation incident, not an oops.
 
-## Step 3 â€” Commit
+## Step 3 — Commit
 
 ```
 type(scope): subject
 
-<body â€” why, not what>
+<body — why, not what>
 
 Refs: #123
 ```
@@ -70,7 +70,7 @@ The `Refs:` trailer links the commit to the GitHub issue in the Project. Use
 `Refs: #123` in the same repository or `Refs: owner/repo#123` across repositories.
 Omit it and the ticket loses its evidence trail.
 
-## Step 4 â€” Push and PROVE it
+## Step 4 — Push and PROVE it
 
 ```powershell
 git push
@@ -82,7 +82,7 @@ The claim "pushed" is only valid when **local HEAD SHA == remote branch SHA**, r
 
 A successful-looking `git push` that raced with someone else, hit a protected branch, or went to the wrong remote will still print encouraging output.
 
-## Step 5 â€” Report
+## Step 5 — Report
 
 ```
 Commit: <sha>
@@ -99,7 +99,7 @@ Files: <list>
 - Never stage paths outside the ticket.
 - Never claim push success without the fetched remote SHA.
 - Never push a red gate.
-- Never push to `main` on a repo whose convention is PRs â€” check the convention first.
+- Never push to `main` on a repo whose convention is PRs — check the convention first.
 
 ## Recovery
 

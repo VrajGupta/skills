@@ -1,6 +1,6 @@
 ---
 name: part2
-version: 1.1.0
+version: 1.2.0
 description: Implementation chain and the build stage of the fleet loop (part1 plan → part2 build → part3 debug → part4 grade) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /part2, wants to pick up and implement the next ready ticket, or needs to build a ticket that /part4 bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board itself and drains it one ticket at a time.
 ---
 
@@ -113,6 +113,15 @@ report each ticket built and where it landed — one line each. If `Agent Ready`
 empty at the start, say so and stop rather than reaching into `Planned` for work
 that hasn't been promoted.
 
+**The authorized exception.** Serial is the default and stays the default. If the
+user explicitly authorizes *parallel* work — not just "do them all", but genuinely
+"build these at the same time" — read the route table in
+`~/.claude/skills/parallel-subagent-implementation/SKILL.md` and follow it. It
+holds the preconditions (disjoint lanes proven, no in-batch blockers, baseline
+green recorded), the lane brief, and the rule that you re-run every worker's gate
+yourself. Nothing in it relaxes this skill: one commit per ticket, one project
+item moved per ticket, and you still never set `Done`.
+
 ## Step 2 — Lock the gate, then build it test-first
 
 **First, lock the done-condition gate.** Translate the ticket's acceptance criteria
@@ -198,7 +207,9 @@ and report the blocking failure rather than thrashing.
 - Implement **one ticket per run** unless the user asks for more — thin slices
   keep handoffs clean and reviewable. When they do ask for more, drain the queue
   **serially**: full skill per ticket, re-query the board between laps, never more
-  than one ticket in `Coding` at a time.
+  than one ticket in `Coding` at a time. Only an explicit authorization to work in
+  *parallel* opens `parallel-subagent-implementation`, and its preconditions still
+  have to hold.
 - Be honest in the handoff about partial work **and unfixed edge cases**, so the
   next session knows the true state.
 - Defer project-specific conventions to the sub-skills; keep this orchestrator

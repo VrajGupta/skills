@@ -1,6 +1,6 @@
 ---
 name: part3
-version: 1.1.1
+version: 1.2.0
 description: Debugging and hardening chain — the third fleet stage (part1 plan → part2 build → part3 debug → part4 grade). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /part2 built — attacking weird inputs, failure modes, permission and tenant boundaries, /part1 invariants, and test quality, then fixing everything test-first against the ticket's Verification-command before moving it to Grading Ready for /part4. Runs as the GPT-5.6 Luna Codex stage parent by default, with an optional one-level reviewer helper. Also supports sweep mode over a directory to find bugs nobody filed and turn them into tickets. Creates or reuses a personalized part3 reviewer agent for the repo. Use when the user runs /part3, wants agent-written code attacked before it can close, needs a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes bugs. Also use it to harden all issues in Debugger Ready; it discovers the queue from the board and drains it one ticket at a time.
 ---
 
@@ -105,6 +105,13 @@ blocks hard. Then report each ticket, what broke, and where it landed — one li
 each. If `Debugger Ready` is empty at the start, say so and offer sweep mode
 instead of inventing tickets.
 
+**The authorized exception.** If the user explicitly authorizes *parallel* hardening
+— not merely "all of them" — read the route table in
+`~/.claude/skills/parallel-subagent-implementation/SKILL.md` and follow it. Its
+preconditions bind: disjoint lanes proven, baseline green recorded, one commit per
+ticket, and you re-run every worker's gate yourself. Repairs still never grade
+themselves, and every ticket still lands in `Grading Ready`, never `Done`.
+
 ## Step 0 — Ensure the personalized agent (idempotent; mini /part1 + /part2)
 
 Check for **`.claude/agents/part3-<slug>.md`** (`<slug>` = the repo / project name). This reviewer belongs to the independent part3 stage-parent session; it is not permission for a native child of another session to create a grandchild:
@@ -121,6 +128,13 @@ Check for **`.claude/agents/part3-<slug>.md`** (`<slug>` = the repo / project na
     git-committable **maker**.
 
   Then continue straight into Step 1 — no stopping.
+
+The pins are what make this agent worth generating: a general reviewer doesn't know
+your test globs, your gate command, or which invariant doc is live. When the file
+can't be written (read-only checkout, no `.claude/` to commit into), don't stop and
+don't fake it — run the pinned loop yourself in this session, or hand the four nets
+to `feature-dev:code-reviewer` with the pins written into its prompt, and say in the
+handoff that the agent was not persisted.
 
 ## Step 1 — Audit & fix (four nets)
 

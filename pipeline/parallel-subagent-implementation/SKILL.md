@@ -1,17 +1,33 @@
 ---
 name: parallel-subagent-implementation
-version: 1.0.0
-description: Implement several independent tickets at once using lane-assigned subagents, with the parent holding the gate and performing all commits and tracker writes. Use ONLY when the user has explicitly authorized batch work and the tickets have provably disjoint file lanes. Default remains one ticket per run — this skill exists to make the authorized exception safe.
+version: 1.1.0
+description: Fan out work to several subagents at once on lanes you drew, with the parent holding every gate and performing all commits and tracker writes. Use when the user has explicitly authorized parallel or batch work, or when another skill needs the lane-and-gatekeeper protocol. Also routes to the right fan-out skill for plan tasks, dependency-ordered ticket ranges, and shared-tree mechanics.
 ---
 
 # parallel-subagent-implementation
 
-The pipeline default is **one ticket per run**. This skill is the authorized exception. It does not relax any other rule.
+The default is **one thing at a time**. Fanning out is the authorized exception, and it relaxes no other rule.
 
-A stage parent is a separately launched top-level session. A native child may not
-spawn nested children. If a stage parent uses helpers, the parent still owns the
-lanes, gates, commits, and GitHub Project writes; separate stage-parent sessions
-remain serial across the GitHub Projects pipeline.
+## Route first — which fan-out is this?
+
+Read the row that matches the work in front of you and go there. Coming back here for the lane-and-gatekeeper protocol is expected; every row below depends on it.
+
+| The work | Skill |
+|---|---|
+| Independent **tickets**, disjoint lanes, all blockers met | **this skill** |
+| An authorized ticket **range with a dependency graph** | `subagent-batch-implementation` (waves) |
+| Tasks from a **written plan**, no tracker involved | `superpowers:subagent-driven-development` |
+| Independent **investigations** — several unrelated failures, no code to land yet | `superpowers:dispatching-parallel-agents` |
+| Workers sharing one checkout — briefs, timeouts, dirty trees | `shared-worktree-delegation` |
+| Another agent or human is writing the same tree | `shared-worktree-safety` |
+
+The plugin skills in that table cover **discovery and plan execution**; they do not know about tickets, gates, or the GitHub Project. When their output has to land as committed work on the board, the parent still runs Steps 1–6 below.
+
+## Depth 1 — the parent fans out, workers never do
+
+A **stage parent** is a separately launched top-level session. It may dispatch one level of workers. A worker may not dispatch anything: every brief must say so in words, because a worker that re-delegates puts a claim two hops from the evidence.
+
+The parent owns the lanes, the gates, the commits, and the GitHub Project writes. Separate stage-parent sessions stay serial across the pipeline no matter how wide any one stage fans out.
 
 ## Preconditions — all must hold
 
@@ -21,7 +37,7 @@ remain serial across the GitHub Projects pipeline.
 - [ ] No ticket in the batch is **blocked by** another in the batch.
 - [ ] A **baseline green** is recorded before dispatch.
 
-Fail any precondition → do not parallelize. Serialize instead, or go back to one ticket.
+Fail any precondition → do not fan out. Serialize instead, or go back to one ticket.
 
 ## Step 1 — Baseline
 
@@ -55,6 +71,7 @@ BASELINE GREEN: <summary>
 OUT OF SCOPE FAILURES: <list — do not fix>
 KNOWN INVARIANTS: <from plan>
 METHOD: test-first (red → green), smallest correct change
+DO NOT DISPATCH SUBAGENTS — implement this lane yourself
 RETURN: paths changed, gate output verbatim, invariants touched, blockers
 ```
 
@@ -69,6 +86,8 @@ Subagent summaries are **claims**. For each returned ticket, the parent independ
 3. Then, once for the whole batch: typecheck + broad suite.
 
 Any ticket whose gate fails under the parent is **not done**, regardless of what its worker reported.
+
+The gate is deterministic and cheap, so it runs first. Once it is green, a **reviewer that did not write the lane** is worth one more pass — `feature-dev:code-reviewer` for correctness findings, `code-simplifier` for the craft pass. Both read the diff without the worker's summary, which is the property that makes them useful. Their findings advise the parent; they never gate a commit, and they never move a Project item.
 
 ## Step 5 — Sequential external writes
 
@@ -92,10 +111,11 @@ Report per ticket: verified / failed parent gate / partial. **Never report a bat
 | Situation | Action |
 |---|---|
 | Worker times out | Assess on-disk state; finish by hand. Never blind re-dispatch. |
+| Worker dispatched its own subagents | Discard its claims and re-run the gate yourself — the evidence is now two hops away. Fix the brief. |
 | Two workers touched the same file | Stop the batch. Untangle manually. Record the lane error. |
 | Parent gate fails for one ticket | That ticket stays in Coding with an honest comment. The others still ship. |
 | Broad suite red after merge | Bisect by ticket. Do not commit anything until you know which lane broke it. |
 
 ## Related
 
-`shared-worktree-delegation` · `shared-worktree-safety` · `subagent-batch-implementation` · `controlled-ticket-delivery` · `part2`
+`shared-worktree-delegation` · `shared-worktree-safety` · `subagent-batch-implementation` · `controlled-ticket-delivery` · `part2` · `superpowers:subagent-driven-development` · `superpowers:dispatching-parallel-agents`

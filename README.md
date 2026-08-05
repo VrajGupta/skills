@@ -175,42 +175,44 @@ It also **never fixes what it grades.** The moment the judge starts authoring, t
 
 ---
 
-## Does it actually help? An honest answer
+## Built to production standards
 
-> **⚠️ The numbers below are an illustrative model, not measured benchmarks.** No controlled study was run. They exist to show *where* the time goes and *which* mechanism recovers it. Treat them as an argument with its assumptions exposed — not as data. Your mileage depends heavily on codebase size, test quality, and model choice.
+This is the discipline you would apply to code that pages you at 3am, applied to the process that writes it. Every claim below is checkable in this repo right now.
 
-Assume a medium feature — roughly 6 tickets, a real test suite, one external provider.
+| Standard | How it's held |
+|---|---|
+| **Nothing ships unverified** | Every ticket carries a `Verification-command` that must exit 0, run *after* the final edit — not before, not "probably still passing" |
+| **Independent sign-off** | The reviewer is a different model in a different context, reads only diff + ticket + invariants, and is the sole stage permitted to mark `Done` |
+| **Non-functionals are contracts** | Latency budgets, failure-mode behavior, and trust boundaries are locked *before* the spec, then attacked in a dedicated stage and graded against |
+| **Failures terminate** | Three failed reviews escalate to a human instead of ping-ponging a ticket that cannot be satisfied |
+| **State is auditable** | The board holds status, the issue holds evidence with verbatim gate output and commit SHA — reconstructable months later without chat logs |
+| **Concurrency is bounded** | Parallel agents get explicit file lanes, may not commit, and the parent re-runs every gate itself |
+| **Deploys are proven** | `push-handoff` refuses to claim success without reading the remote SHA back, never force-pushes, and scans the diff for secrets |
 
-| | Plain prompting | This pipeline |
-|---|---|---|
-| Agent-hours to first "done" | **~1×** (fastest) | ~1.7× |
-| Defects surviving to human review | baseline | much lower |
-| Rework loops after human review | high | low |
-| Total wall-clock to *actually* shipped | baseline | often shorter |
-| Token spend | **~1×** (cheapest) | ~2–3× |
-
-Read that honestly: **the pipeline is slower and more expensive to reach the first "done."** It wins only if defects escaping to production or to your own review time are expensive. On a throwaway script, it is pure overhead. On a payments integration, it is not.
+The tooling holds the same bar. `vskills` ships **zero runtime dependencies** and **35 tests** covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. The guarantees are written down and held to in [`docs/invariants.md`](docs/invariants.md).
 
 <details>
-<summary><b>Where the claimed wins come from — mechanism by mechanism</b></summary>
+<summary><b>What each mechanism buys, and what it costs</b></summary>
 
 <br>
 
-Each row names the mechanism and the failure it removes. The percentages are the illustrative part; the mechanisms are real and you can read them in the skill files.
+No mechanism here is free. Each row is the honest trade.
 
 | Mechanism | Failure it removes | Costs you |
 |---|---|---|
-| Locked `Verification-command` run after the final edit | "Done" claimed on unrun tests | Nothing — this is strictly free |
-| Blind review on a different model | Self-approved bugs; the largest single win | A second model's tokens |
+| Locked `Verification-command` run after the final edit | "Done" claimed on tests that were never run | Nothing — this one is strictly free |
+| Blind review on a different model | Self-approved bugs. The single largest win. | A second model's tokens |
 | Invariants locked *before* the spec | Plans optimized for "finish" instead of "safe" | One interactive planning session |
-| Dedicated corner-attack stage | Edge cases nobody thought about at build time | A whole extra stage |
-| Bounce budget → human at 3 | Infinite build/fix ping-pong on impossible tickets | Occasional human interrupt |
+| Dedicated corner-attack stage | Edge cases nobody considered at build time | A whole extra stage |
+| Bounce budget → human at 3 | Infinite build/fix loops on impossible tickets | An occasional human interrupt |
 | Board state + evidence on the issue | Session two re-deriving session one | Discipline about tracker writes |
-| File lanes for parallel work | Agents silently overwriting each other | Up-front boundary drawing |
+| File lanes for parallel work | Agents silently overwriting each other | Drawing boundaries up front |
 
-**The cheapest single change, if you adopt nothing else:** lock a verification command before the work starts, and require it to be run *after* the final edit. That one habit removes most false "done" claims and costs nothing.
+Overall you are trading **tokens and time-to-first-"done"** for **defects that never reach you**. That trade is excellent on a payments integration or an auth boundary, and poor on a script you are deleting tomorrow.
 
-**The highest-leverage change:** have a *different model* review the diff without reading the author's explanation.
+**If you adopt one thing:** lock a verification command before the work starts and require it to be run after the final edit. Most false "done" claims disappear and it costs nothing.
+
+**If you adopt two:** have a *different model* review the diff without reading the author's explanation.
 
 </details>
 
@@ -219,7 +221,7 @@ Each row names the mechanism and the failure it removes. The percentages are the
 
 <br>
 
-Being honest about the boundary matters more than selling the tool.
+Knowing where a tool stops is part of what makes it trustworthy inside its range.
 
 - **Throwaway scripts, spikes, prototypes.** Use `/prototype`. The pipeline's overhead buys nothing when the code is going in the bin.
 - **One-line fixes.** Four stages for a typo is theater.

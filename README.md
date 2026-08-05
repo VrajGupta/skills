@@ -1,148 +1,395 @@
 # skills
 
-My Claude Code skills.
+Agent skills for running software work as a **factory** rather than a conversation — plus `vskills`, a zero-dependency installer that puts them on your machine.
 
-## Installing with V's Skills (`vskills`)
+A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds two kinds: a four-stage delivery pipeline where no agent is ever allowed to review its own work, and a library of standalone skills for the jobs around it.
 
 ```
-npx github:VrajGupta/skills init     # install every skill onto this machine
-npx github:VrajGupta/skills list     # see what's installed / drifted
-npx github:VrajGupta/skills add <skill>       # install one skill + its dependencies
-npx github:VrajGupta/skills update [skill...] # refresh installed skills (skips local edits)
+npx github:VrajGupta/skills init
 ```
 
-Installs real content into `~/.agents/skills/<name>` and symlinks it into
-`~/.claude/skills/<name>`. If you've hand-edited an installed skill, `update`
-detects the drift and leaves it alone instead of overwriting it — pass
-`--force` to overwrite anyway. See [`docs/spec-vskills-cli.md`](docs/spec-vskills-cli.md)
-for the full design and [`docs/invariants.md`](docs/invariants.md) for the
-guarantees it holds itself to.
+---
+
+## Why not just prompt?
+
+You already can prompt an agent to "build this feature and test it." It usually works. The failures are the problem — and they are the *same* failures every time.
+
+| What goes wrong when you prompt | Why it happens | What a skill does instead |
+|---|---|---|
+| Agent says "done", the tests were never run | "Done" is a feeling, judged by the same model that wants to be finished | Done is a **locked command that must exit 0**, run *after* the final edit |
+| Agent reviews its own code and approves it | The misreading that produced the bug produces a confident review of the bug | The reviewer is a **different model in a different context**, and never reads the author's rationale |
+| A ticket bounces between build and fix forever | Nobody is allowed to say "this ticket is unbuildable" | Three failed reviews **escalate to a human** instead of looping |
+| Second session has no idea what the first did | Chat history is not a handoff | State lives on the **board**; evidence lives on the **issue** |
+| Parallel agents overwrite each other | No one drew the boundaries | Explicit **file lanes**, and the parent re-runs every gate itself |
+| "I fixed the edge cases" (it did not) | Happy path is green, so the suite says yes | A dedicated stage attacks **only** the corners the happy path never touches |
+
+The thread running through all of it: **a claim is not evidence.** Nearly every rule in this repo exists to convert some claim into something checkable.
+
+<details>
+<summary><b>The single most important idea, if you read nothing else</b></summary>
+
+<br>
+
+**Maker ≠ checker, structurally.**
+
+Not "the agent should double-check its work" — that fails, because the same context that made the mistake evaluates the mistake. Instead:
+
+- The **coder** builds it and is explicitly forbidden from judging it.
+- The **debugger** attacks it on a different model, may fix anything, but may not close it.
+- The **reviewer** judges it blind on a *third* model — diff, ticket, and invariants only. It never reads the handoff, because a confident narrative from the author is the strongest single contaminant of a review. It is also the only stage permitted to mark anything `Done`.
+
+Everything else is plumbing around that one property.
+
+</details>
+
+---
+
+## The pipeline
+
+```mermaid
+flowchart LR
+    P[Planned] --> AR[Agent Ready] --> C[Coding] --> DR[Debugger Ready]
+    DR --> D[Debugging] --> RR[Review Ready] --> R[Reviewing] --> Done
+
+    style Done fill:#1a7f37,color:#fff
+```
+
+| Stage | Skill | Owns | May set `Done`? |
+|---|---|---|---|
+| Plan | `/planner` | Grill → invariants → spec → tickets | No |
+| Build | `/coder` | One ticket, test-first, against a gate | No |
+| Harden | `/debugger` | Attack the corners, fix test-first | No |
+| Judge | `/reviewer` | Blind verdict, route by failure kind | **Yes — only this one** |
+
+Each stage runs in its own top-level session on a **different model**, so no stage inherits the previous one's blind spots. The GitHub Project item, the issue, git, and the handoff are what connect them — never chat history.
+
+<details>
+<summary><b>/planner</b> — turn a fuzzy idea into tickets a stranger could build</summary>
+
+<br>
+
+**Use it when:** you have a feature, ADR, or "we should probably…" and no tickets yet.
+
+**What it does:**
+
+1. **Sizes the effort.** Too big or too foggy to even name the open questions? It recommends `/wayfinder` to map the territory first, rather than grilling fog.
+2. **Grills you.** Interactively challenges the plan against your project's existing docs and decisions until every load-bearing fork is settled.
+3. **Locks invariants** — the step most plans skip. Concrete latency budgets (`p95 < 300ms`, not "fast"), failure-mode contracts for every dependency, and security/permission boundaries. These become the targets `/debugger` attacks and the criteria `/reviewer` grades.
+4. **Writes a spec**, then breaks it into dependency-ordered vertical slices.
+5. **Publishes real tickets** — each with acceptance criteria a *blind* reviewer can check, and a runnable `Verification-command`.
+
+**Why it helps:** a vague ticket does not fail at planning time. It fails three stages later as a ticket that bounces forever because nobody can tell whether it's satisfied. This stage writes for those three future readers.
+
+**Uses:** `grill-with-docs` → `to-spec` → `to-tickets` → `handoff` → `push-handoff`
+
+</details>
+
+<details>
+<summary><b>/coder</b> — build exactly one ticket, honestly</summary>
+
+<br>
+
+**Use it when:** there's a ticket in `Agent Ready` and you want it built.
+
+**What it does:**
+
+1. Picks the **lowest-numbered unblocked ticket** (preferring one the reviewer bounced back — that work is half-built and blocking a close).
+2. Moves *only that ticket* to `Coding`, so the board answers "what is an agent touching right now."
+3. **Locks the gate** — one command that must exit 0 — before writing any code.
+4. Builds test-first at the highest meaningful seam, with external dependencies faked.
+5. **Self-checks narrowly:** every acceptance criterion named against the line and test that satisfies it; every invariant given a test that would go red if it broke.
+6. Moves to `Debugger Ready` and writes an honest handoff — including what is stubbed.
+
+**Why it helps:** it is deliberately *not* the checker. It cannot talk the reviewer into a pass, because the reviewer never reads its handoff. That removes the incentive to write defensively and replaces it with the only thing that works: a green gate and an honest report.
+
+**"Build all of them"** drains the queue **serially** — one ticket in `Coding` at a time, re-querying the board each lap. Parallel is available but requires explicit authorization and provably disjoint file lanes.
+
+</details>
+
+<details>
+<summary><b>/debugger</b> — the skeptic</summary>
+
+<br>
+
+**Use it when:** something is in `Debugger Ready`, or you want an audit of code nobody filed bugs against.
+
+**Four nets**, stated in full before a single fix:
+
+1. **Failing tests** — what is already red
+2. **Static errors** — typechecker and linter
+3. **Invariant violations** — does the *code* actually honor each budget, failure contract, and trust boundary? Real reading, not a grep.
+4. **Weak tests** — invariants with no covering test, tautological or over-mocked tests that assert nothing. *A missing test for an invariant is itself a bug.*
+
+**Then it red-teams the corners** — the pass `/coder` deliberately skipped, and it does **not** re-run the happy path:
+
+- Weird inputs: empty, null, zero, negative, oversized, malformed, unicode, duplicate, injection-shaped, timezone boundaries
+- Failure modes: each dependency down, slow, rate-limited, returning garbage — *"a `try/catch` that logs and continues is usually a broken failure mode wearing the costume of a handled one"*
+- Sequences: races, retry after partial success, the same webhook twice, a crash between the write and the publish
+- Boundaries: wrong user, forged token, another tenant's identifier
+
+It may fix anything it finds. It may **not** close anything — it just became an author.
+
+**Bootstraps a per-repo auditor agent** (`.claude/agents/debugger-<slug>.md`) pinned to your stack, test globs, gate command, and invariant docs. Created once, reused verbatim after.
+
+</details>
+
+<details>
+<summary><b>/reviewer</b> — the gate, and the only stage that says no</summary>
+
+<br>
+
+**Use it when:** something is in `Review Ready`.
+
+**Reads exactly three things:** the diff, the ticket, the invariant docs.
+
+**Refuses to read:** the handoff, the PR description, commit-message justifications, any agent transcript explaining *why* the code is correct.
+
+> Once you have read "this is safe because we validate upstream," you will look for that validation and see it, whether or not it is there.
+
+**Cheap checks first.** Gate red → immediate fail, no judgment pass. Deterministic checks are cheaper and more reliable than a model; let them do their half.
+
+**Then six dimensions** — ticket fidelity, invariant integrity, test honesty, corner behavior, domain fit, craft. The first four can block. The last two only advise unless you can name a concrete future failure, *because a reviewer empowered to block on taste will block forever and the fleet will learn to route around it.*
+
+**Every finding must be falsifiable:** `file:line` + the input that triggers it + the wrong behavior. "Error handling could be more robust" is not a finding — it cannot be argued with, so it cannot be fixed, so it bounces the ticket forever.
+
+**Routes by failure kind**, not into one default lane:
+
+```mermaid
+flowchart TD
+    V{Verdict}
+    V -->|PASS| Done
+    V -->|wrong: bug, broken invariant| DR[Debugger Ready]
+    V -->|missing: no test, unimplemented criterion| AR[Agent Ready]
+    V -->|unbuildable ticket| PL[Planned]
+    V -->|3rd bounce| H[Human escalation]
+
+    style Done fill:#1a7f37,color:#fff
+    style H fill:#9a6700,color:#fff
+```
+
+That fourth row is the one most setups forget, and it is the origin of most infinite loops: a ticket that *cannot* be satisfied bounced forever between builder and fixer, each doing competent work on an impossible task.
+
+It also **never fixes what it grades.** The moment the judge starts authoring, there is no independent judge left anywhere in the loop.
+
+</details>
+
+---
+
+## Does it actually help? An honest answer
+
+> **⚠️ The numbers below are an illustrative model, not measured benchmarks.** No controlled study was run. They exist to show *where* the time goes and *which* mechanism recovers it. Treat them as an argument with its assumptions exposed — not as data. Your mileage depends heavily on codebase size, test quality, and model choice.
+
+Assume a medium feature — roughly 6 tickets, a real test suite, one external provider.
+
+| | Plain prompting | This pipeline |
+|---|---|---|
+| Agent-hours to first "done" | **~1×** (fastest) | ~1.7× |
+| Defects surviving to human review | baseline | much lower |
+| Rework loops after human review | high | low |
+| Total wall-clock to *actually* shipped | baseline | often shorter |
+| Token spend | **~1×** (cheapest) | ~2–3× |
+
+Read that honestly: **the pipeline is slower and more expensive to reach the first "done."** It wins only if defects escaping to production or to your own review time are expensive. On a throwaway script, it is pure overhead. On a payments integration, it is not.
+
+<details>
+<summary><b>Where the claimed wins come from — mechanism by mechanism</b></summary>
+
+<br>
+
+Each row names the mechanism and the failure it removes. The percentages are the illustrative part; the mechanisms are real and you can read them in the skill files.
+
+| Mechanism | Failure it removes | Costs you |
+|---|---|---|
+| Locked `Verification-command` run after the final edit | "Done" claimed on unrun tests | Nothing — this is strictly free |
+| Blind review on a different model | Self-approved bugs; the largest single win | A second model's tokens |
+| Invariants locked *before* the spec | Plans optimized for "finish" instead of "safe" | One interactive planning session |
+| Dedicated corner-attack stage | Edge cases nobody thought about at build time | A whole extra stage |
+| Bounce budget → human at 3 | Infinite build/fix ping-pong on impossible tickets | Occasional human interrupt |
+| Board state + evidence on the issue | Session two re-deriving session one | Discipline about tracker writes |
+| File lanes for parallel work | Agents silently overwriting each other | Up-front boundary drawing |
+
+**The cheapest single change, if you adopt nothing else:** lock a verification command before the work starts, and require it to be run *after* the final edit. That one habit removes most false "done" claims and costs nothing.
+
+**The highest-leverage change:** have a *different model* review the diff without reading the author's explanation.
+
+</details>
+
+<details>
+<summary><b>When NOT to use this</b></summary>
+
+<br>
+
+Being honest about the boundary matters more than selling the tool.
+
+- **Throwaway scripts, spikes, prototypes.** Use `/prototype`. The pipeline's overhead buys nothing when the code is going in the bin.
+- **One-line fixes.** Four stages for a typo is theater.
+- **Exploratory work where you don't know the question yet.** Use `/wayfinder` to map it first, or `/research`. Grilling fog produces confident nonsense.
+- **Solo hacking where you *are* the checker and you're actually going to read it.** The pipeline's value is proportional to how little you plan to read.
+- **No test suite at all.** The gate is the backbone. Without one, every "done" is a judgment call again and most of the machinery is inert.
+
+</details>
+
+---
+
+## "I want to…" — start here
+
+| I want to… | Use |
+|---|---|
+| Take an idea all the way to tickets | `/planner` |
+| Build the next ready ticket | `/coder` |
+| Find bugs in code an agent wrote | `/debugger` |
+| Decide if work can close | `/reviewer` |
+| Run *any* task until a checker says done | `/loop-engineer` |
+| Stress-test a plan before building | `/grilling`, `/grill-me` |
+| Map work too big to hold in one session | `/wayfinder` |
+| Debug something genuinely hard | `/diagnosing-bugs` |
+| Audit a whole codebase, not one diff | `/codebase-audit` |
+| Check an invariant is *enforced*, not just documented | `/invariant-evidence-review` |
+| Work on several tickets at once | `/parallel-subagent-implementation` |
+| Deliver a whole ticket range in order | `/subagent-batch-implementation` |
+| Ship a webhook / queue / billing integration | `/provider-integration-tdd` |
+| Price a feature whose cost is inference | `/ai-subscription-unit-economics` |
+| Unstick a pipeline reporting false progress | `/state-driven-pipeline-recovery` |
+| Hand off to the next session | `/handoff` then `/push-handoff` |
+| Write a skill of my own | `/writing-great-skills` |
+
+---
+
+## Full catalog
+
+<details>
+<summary><b>Pipeline machinery</b> — how tickets move and what counts as proof</summary>
+
+<br>
+
+`planner` / `coder` / `debugger` / `reviewer` are the chains you *run*. `pipeline/` is the machinery around them.
+
+| Skill | Use when |
+|---|---|
+| `github-projects-pipeline` | The stage protocol. Project `Status` is canonical; issues hold tickets and evidence. Load before any stage. |
+| `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
+| `specialist-profiles` | Build and verify the four role agents so maker ≠ checker is structural, not aspirational |
+| `state-driven-pipeline-recovery` | The pipeline is thrashing, or a worker reports success while nothing changed |
+| `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
+| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `/coder` invokes |
+| `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts — where failures are replay and ordering, not logic |
+| `invariant-evidence-review` | Is this invariant actually enforced and measured, or just asserted in a comment? |
+| `codebase-audit` | Audit a whole system: sweep by layer, rank by blast radius, emit tickets |
+| `shared-worktree-safety` | Another agent or human is writing to the same checkout |
+| `shared-worktree-delegation` | Fanning subagents into one tree with explicit file lanes |
+| `parallel-subagent-implementation` | **Start here for any fan-out** — carries the route table for all parallel work |
+| `subagent-batch-implementation` | An authorized ticket *range* delivered in dependency waves |
+| `ai-subscription-unit-economics` | Pricing and usage caps when inference is your cost of goods |
+
+The load-bearing rule across all of them: **done is a locked verification command that was actually run after the final change**, plus an independent checker for non-trivial work, plus truthful tracker state.
+
+</details>
+
+<details>
+<summary><b>Standalone skills</b> — useful with or without the pipeline</summary>
+
+<br>
+
+| Skill | What it's for |
+|---|---|
+| `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
+| `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
+| `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
+| `setup-vskills` | Set this repo up on a new machine |
+
+</details>
+
+<details>
+<summary><b>mattpocock/</b> — mirrored library, use independently</summary>
+
+<br>
+
+[mattpocock/skills](https://github.com/mattpocock/skills), MIT licensed — see `mattpocock/LICENSE`. Mirrored by his own category structure. Each is independent; invoke whichever fits the moment.
+
+**engineering/** — `tdd` · `code-review` · `diagnosing-bugs` · `codebase-design` · `domain-modeling` · `grill-with-docs` · `implement` · `improve-codebase-architecture` · `prototype` · `research` · `resolving-merge-conflicts` · `to-spec` · `to-tickets` · `triage` · `wayfinder` · `ask-matt`
+
+**productivity/** — `grilling` · `grill-me` · `handoff` · `teach` · `writing-great-skills`
+
+**misc/** — `git-guardrails-claude-code` · `migrate-to-shoehorn` · `scaffold-exercises` · `setup-pre-commit`
+
+**personal/** — `edit-article` · `obsidian-vault`
+
+**in-progress/** and **deprecated/** are mirrored as-is; treat accordingly.
+
+Run `setup-matt-pocock-skills` once per repo before using the engineering skills — it configures the issue tracker, triage labels, and domain-doc layout they assume.
+
+See `mattpocock/UPSTREAM-README.md` for his full reference and the philosophy behind them.
+
+</details>
+
+---
+
+## Installing with `vskills`
+
+```bash
+npx github:VrajGupta/skills init               # install every skill
+npx github:VrajGupta/skills list               # what's installed / drifted
+npx github:VrajGupta/skills add <skill>        # one skill + its dependencies
+npx github:VrajGupta/skills update [skill...]  # refresh (skips your local edits)
+```
+
+Content is copied to `~/.agents/skills/<name>` and symlinked into `~/.claude/skills/<name>`.
+
+<details>
+<summary><b>What it guarantees</b></summary>
+
+<br>
+
+- **Your edits are safe by default.** If an installed skill's content hash doesn't match the manifest, it's `drifted` and left untouched. Only `--force` overwrites it.
+- **Destructive overwrites get backed up first**, to `~/.agents/skills/.vskills-backup/<name>-<timestamp>`.
+- **Interrupted copies never corrupt.** Staged in a temp dir, swapped in with `rename`.
+- **Symlinks are never clobbered.** A real directory or a foreign symlink at the target path is left alone with a warning.
+
+Zero runtime dependencies, Node ≥18. Full design in [`docs/spec-vskills-cli.md`](docs/spec-vskills-cli.md); the guarantees it holds itself to are in [`docs/invariants.md`](docs/invariants.md).
+
+</details>
+
+---
 
 ## Layout
 
 ```
-bin/vskills.js       the vskills CLI entrypoint (see "Installing with vskills" above)
-src/             vskills's implementation
-test/            vskills's test suite (node --test)
-planner/           planning chain     (batch design grill -> spec -> tickets -> handoff)
-coder/           implementation     (next ticket -> TDD -> self-check -> handoff)
-debugger/           debug/harden       (four-net audit -> red-team the corners -> fix -> handoff)
-reviewer/           review/gate to Done (blind judge -> PASS/FAIL -> route or escalate)
-push-handoff/    verified, explicitly authorized git commit/push closeout
-loop-engineer/   maker/checker loop engineering (closed-loop task runner)
-pipeline/        the delivery-factory skills: tracker stage protocol, the four roles,
-                 stage-parent harness profile, shared-worktree safety, gated batch delivery,
-                 audit/recovery
-mattpocock/      Matt Pocock's skills (github.com/mattpocock/skills), mirrored by category
-                 (including in-progress/batch-grill-me)
+bin/vskills.js    the vskills CLI entrypoint
+src/              vskills implementation
+test/             vskills test suite (node --test)
+
+planner/          plan    — grill → invariants → spec → tickets → handoff
+coder/            build   — next ticket → TDD → self-check → handoff
+debugger/         harden  — four-net audit → red-team the corners → fix
+reviewer/         judge   — blind verdict → PASS/FAIL → route or escalate
+
+push-handoff/     verified, explicitly authorized commit/push closeout
+loop-engineer/    closed maker→checker loop runner
+pipeline/         the machinery: stage protocol, roles, worktree safety,
+                  batch delivery, audit, recovery
+mattpocock/       mirrored library (github.com/mattpocock/skills)
 ```
 
-## pipeline/ — running work as a factory
+<details>
+<summary><b>Running the stages on different models</b></summary>
 
-`planner/2/3/4` are the chains you run, one per pipeline stage, each on a different
-model so no stage ever reviews its own work:
+<br>
 
-```
-Planned -> Agent Ready -> Coding -> Debugger Ready -> Debugging -> Review Ready -> Reviewing -> Done
-   planner        |          coder         |             debugger          |            reviewer
-```
+The pipeline is serial. Each stage runs as an independent top-level session; a stage may coordinate one level of helpers, and a helper may never spawn helpers of its own.
 
-`reviewer` is the only stage that may set `Done`. It judges **blind** — diff, ticket and
-invariants only, never the author's handoff — because a confident rationale from the
-author is the strongest thing that corrupts a review. A failed review routes by *kind*
-(correctness -> Debugger Ready, missing scope or tests -> Agent Ready, unbuildable ticket ->
-Planned), and a third failed review escalates to a human instead of looping forever.
-
-### Stage-parent harness profile
-
-The fleet runs as a serial four-stage workflow. GPT-5.6 Luna is the overall
-coordinator; it may dispatch Opus 5 in the Claude Code harness for planning after
-planning decisions are supplied. Kimi, Codex, and Grok run as independent top-level
-stage-parent sessions for `/coder`, `/debugger`, and `/reviewer`. A stage parent is the
-chat/session running its stage; it may coordinate one level of helpers when its
-harness supports that. A native child launched from another session must not spawn
-nested children.
-
-| Stage | Stage parent | Harness / route | Effort |
+| Stage | Default parent | Harness | Effort |
 |---|---|---|---|
-| `/planner` | Opus 5, Luna-dispatched or visible | Claude Code harness using the Claude subscription | medium/high |
-| `/coder` | Kimi K3 | Pi harness via OpenRouter | high |
-| `/debugger` | GPT-5.6 Luna | Codex harness using the Codex subscription | **max** |
-| `/reviewer` | Grok 4.5 | Pi harness via OpenRouter | high/xhigh |
+| `/planner` | Opus 5 | Claude Code | medium/high |
+| `/coder` | Kimi K3 | Pi via OpenRouter | high |
+| `/debugger` | GPT-5.6 Luna | Codex | **max** |
+| `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
 
-Coder may use Kimi K2.7 Code helpers and debugger may use auditor helpers, but only
-inside their independent top-level stage-parent sessions. Reviewer's final reviewer must
-remain blind and may receive only the ticket, diff, gate, and invariant docs. The
-GitHub Project item, GitHub issue, git, and handoffs—not chat history—connect the
-stage parents. `max` is a reasoning
-setting, not part of a model name. A headless Opus child cannot conduct the
-interactive grill; use a visible Claude session or pass all decisions in advance.
+These are defaults, and a project's own CONTEXT may override them. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
 
-**Runtime choice:** super.engineering is the managed-workspace authority for
-worktrees, target/base branches, sessions, and reviews. Herdr is an optional local
-terminal multiplexer for visible, persistent agent panes. Herdr can run the separate
-stage-parent processes, but it does not replace GitHub Projects or git/GitHub, and
-it should not independently mutate a worktree managed by super.engineering. The two tools can
-coexist: super.engineering owns the workspace; Herdr provides process visibility.
+The board item, issue, git artifacts, and handoff bridge the sessions — never chat history. `max` is a reasoning setting, not part of a model name. A headless planner cannot conduct the interactive grill; use a visible session or supply every decision in advance.
 
-The stage protocol itself lives in [`pipeline/github-projects-pipeline`](pipeline/github-projects-pipeline/SKILL.md):
-exact Project `Status` options, who may move what, re-read after every write, how to
-use `gh project`, and how to run every stage with no project at all.
+**Runtime.** super.engineering is the managed-workspace authority for worktrees, target/base branches, sessions, and reviews. Herdr is an optional local terminal multiplexer giving you visible, persistent agent panes, and it can host the separate stage-parent processes. The two coexist — super.engineering owns the workspace, Herdr provides process visibility — but Herdr replaces neither GitHub Projects nor git, and should not independently mutate a super.engineering-managed worktree.
 
-`planner/2/3/4` are the chains you run. `pipeline/` is the machinery around them: how a
-ticket moves between stages, who is allowed to move it, and what counts as proof.
+**No GitHub Project?** Every stage still runs in full — grill, build, attack, judge — recording state in a local tracker or the handoff instead. A missing label is a bookkeeping gap; a skipped test is a defect that ships. The stage protocol, including the no-project fallback, is in [`pipeline/github-projects-pipeline`](pipeline/github-projects-pipeline/SKILL.md).
 
-| Skill | Use when |
-|---|---|
-| `github-projects-pipeline` | Stage protocol — GitHub Project `Status` is canonical; issues hold tickets and evidence |
-| `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
-| `specialist-profiles` | Build/verify the planner, coder, debugger roles so maker != checker is structural |
-| `state-driven-pipeline-recovery` | The pipeline is thrashing or reporting false greens |
-| `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
-| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `coder` invokes |
-| `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts |
-| `invariant-evidence-review` | Is an invariant actually enforced, or only documented? |
-| `codebase-audit` | Audit a whole system rather than one diff |
-| `shared-worktree-safety` | Anything else is writing to the same checkout |
-| `shared-worktree-delegation` | Fanning subagents into one tree with explicit file lanes |
-| `parallel-subagent-implementation` | Authorized parallel tickets with disjoint lanes |
-| `subagent-batch-implementation` | An authorized ticket *range* delivered in dependency waves |
-| `ai-subscription-unit-economics` | Pricing and usage caps when inference is your cost of goods |
-
-The load-bearing rule across all of them: **done is a locked verification command that was
-actually run after the final change**, plus an independent checker for non-trivial work,
-plus truthful tracker state.
-
-## planner / coder / debugger / loop-engineer — use as a workflow
-
-These four are meant to be run **as a pipeline**, in order, on the same repo:
-
-1. **`/planner`** — take a new idea/feature/ADR from grilling through a locked spec
-   and dependency-ordered tickets, then push a handoff.
-2. **`/coder`** — pick up the next unblocked ticket, build it test-first, red-team
-   it against the invariants `/planner` locked, then push a handoff.
-3. **`/debugger`** — the loop-closer. The Codex Luna stage parent audits the directory
-   for bugs/weak tests, fixes them test-first, may use a fresh-eyes helper inside its
-   own top-level session, and pushes a handoff.
-4. **`/loop-engineer`** — wraps any of the above (or any coding task) in a closed
-   maker -> checker loop with an explicit done-condition, so the agent iterates
-   until the goal is verifiably met instead of stopping after one pass.
-
-You don't have to run them together — each is a standalone skill and works fine
-on its own. But `planner -> coder -> debugger` is the intended round trip: plan it,
-build it, close the loop. Drop `loop-engineer` around any stage where you want
-iteration to continue until a checker says done.
-
-## mattpocock/ — use separately
-
-Matt Pocock's skills ([mattpocock/skills](https://github.com/mattpocock/skills),
-MIT licensed — see `mattpocock/LICENSE`) are mirrored here by his own category
-structure (`engineering/`, `productivity/`, `personal/`, `misc/`, `in-progress/`,
-`deprecated/`). Each is independent — invoke whichever one fits the moment
-(`/grill-me`, `/tdd`, `/diagnosing-bugs`, `/handoff`, etc.). See
-`mattpocock/UPSTREAM-README.md` for his full reference and the philosophy
-behind them.
-
-Run `mattpocock/engineering/setup-matt-pocock-skills` once per repo before using
-his other engineering skills — it configures the issue tracker, triage labels,
-and domain-doc layout they assume.
+</details>

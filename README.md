@@ -388,6 +388,8 @@ These are defaults, and a project's own CONTEXT may override them. **What is not
 
 The board item, issue, git artifacts, and handoff bridge the sessions — never chat history. `max` is a reasoning setting, not part of a model name. A headless planner cannot conduct the interactive grill; use a visible session or supply every decision in advance.
 
+**Runtime.** super.engineering is the managed-workspace authority for worktrees, target/base branches, sessions, and reviews. Herdr is an optional local terminal multiplexer giving you visible, persistent agent panes, and it can host the separate stage-parent processes. The two coexist — super.engineering owns the workspace, Herdr provides process visibility — but Herdr replaces neither GitHub Projects nor git, and should not independently mutate a super.engineering-managed worktree.
+
 **No GitHub Project?** Every stage still runs in full — grill, build, attack, judge — recording state in a local tracker or the handoff instead. A missing label is a bookkeeping gap; a skipped test is a defect that ships. The stage protocol, including the no-project fallback, is in [`pipeline/github-projects-pipeline`](pipeline/github-projects-pipeline/SKILL.md).
 
 </details>

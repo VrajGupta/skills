@@ -241,6 +241,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Build the next ready ticket | `/coder` |
 | Find bugs in code an agent wrote | `/debugger` |
 | Decide if work can close | `/reviewer` |
+| Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
 | Stress-test a plan before building | `/grilling`, `/grill-me` |
 | Map work too big to hold in one session | `/wayfinder` |
@@ -295,9 +296,25 @@ The load-bearing rule across all of them: **done is a locked verification comman
 | Skill | What it's for |
 |---|---|
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
+| `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
 | `setup-vskills` | Set this repo up on a new machine |
+
+`/gauntlet-loop` is the lightweight path for work that does not need the full
+planner → coder → debugger → reviewer pipeline. Use it for one-shot prompts, UI
+polish, writing, research, or small implementation tasks:
+
+```text
+/gauntlet-loop build a landing page for my running brand
+```
+
+It first requires a named, fetchable comparison bar. In prompt mode it returns a
+paste-ready prompt; in run mode it loops a maker and a fresh critic until the output
+wins the blind comparison and its normal verification gate passes. UI work also gets
+same-viewport screenshots, responsive states, accessibility, typography, and
+interaction checks. It never replaces the debugger or reviewer for security,
+permissions, payments, migrations, or other high-risk work.
 
 </details>
 
@@ -367,6 +384,7 @@ reviewer/         judge   — blind verdict → PASS/FAIL → route or escalate
 
 push-handoff/     verified, explicitly authorized commit/push closeout
 loop-engineer/    closed maker→checker loop runner
+gauntlet-loop/    blind maker→critic loop for one-shot and UI work
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
 mattpocock/       mirrored library (github.com/mattpocock/skills)

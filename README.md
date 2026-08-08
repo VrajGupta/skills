@@ -318,6 +318,12 @@ same-viewport screenshots, responsive states, accessibility, typography, and
 interaction checks. It never replaces the debugger or reviewer for security,
 permissions, payments, migrations, or other high-risk work.
 
+Install only this skill with:
+
+```bash
+npx github:VrajGupta/skills add gauntlet-loop
+```
+
 </details>
 
 <details>
@@ -407,7 +413,7 @@ The pipeline is serial. Each stage runs as an independent top-level session; a s
 | `/debugger` | GPT-5.6 Luna | Codex | **max** |
 | `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
 
-These are defaults, and a project's own CONTEXT may override them. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
+These are defaults, and a project's own CONTEXT may override them — [`VrajGupta/Pi-Setup`](https://github.com/VrajGupta/Pi-Setup) is a working harness that launches these four stages and pins its own model per stage. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
 
 The board item, issue, git artifacts, and handoff bridge the sessions — never chat history. `max` is a reasoning setting, not part of a model name. A headless planner cannot conduct the interactive grill; use a visible session or supply every decision in advance.
 

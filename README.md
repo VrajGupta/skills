@@ -75,12 +75,12 @@ Each stage runs in its own top-level session on a **different model**, so no sta
 1. **Sizes the effort.** Too big or too foggy to even name the open questions? It recommends `/wayfinder` to map the territory first, rather than grilling fog.
 2. **Grills you.** Interactively challenges the plan against your project's existing docs and decisions until every load-bearing fork is settled.
 3. **Locks invariants** — the step most plans skip. Concrete latency budgets (`p95 < 300ms`, not "fast"), failure-mode contracts for every dependency, and security/permission boundaries. These become the targets `/debugger` attacks and the criteria `/reviewer` grades.
-4. **Writes a spec**, then breaks it into dependency-ordered vertical slices.
+4. **Writes a spec and breaks it into dependency-ordered vertical slices via `/adversarial-loop`** (`plan` mode) — the orchestrator plus a fixed model trio each independently turn the locked decisions into a competing spec + ticket breakdown, cross-critique to sign-off, and the highest-rated one publishes.
 5. **Publishes real tickets** — each with acceptance criteria a *blind* reviewer can check, and a runnable `Verification-command`.
 
 **Why it helps:** a vague ticket does not fail at planning time. It fails three stages later as a ticket that bounces forever because nobody can tell whether it's satisfied. This stage writes for those three future readers.
 
-**Uses:** `grill-with-docs` → `to-spec` → `to-tickets` → `handoff` → `push-handoff`
+**Uses:** `grill-with-docs` → `/adversarial-loop` (`plan` mode) → `handoff` → `push-handoff`
 
 </details>
 
@@ -96,7 +96,7 @@ Each stage runs in its own top-level session on a **different model**, so no sta
 1. Picks the **lowest-numbered unblocked ticket** (preferring one the reviewer bounced back — that work is half-built and blocking a close).
 2. Moves *only that ticket* to `Coding`, so the board answers "what is an agent touching right now."
 3. **Locks the gate** — one command that must exit 0 — before writing any code.
-4. Builds test-first at the highest meaningful seam, with external dependencies faked.
+4. Builds via `/adversarial-loop` (`build` mode) — the orchestrator plus a fixed model trio each implement test-first, at the highest meaningful seam with external dependencies faked, in their own isolated worktree; cross-critique to sign-off, then the highest-rated diff wins.
 5. **Self-checks narrowly:** every acceptance criterion named against the line and test that satisfies it; every invariant given a test that would go red if it broke.
 6. Moves to `Debugger Ready` and writes an honest handoff — including what is stubbed.
 
@@ -112,6 +112,12 @@ Each stage runs in its own top-level session on a **different model**, so no sta
 <br>
 
 **Use it when:** something is in `Debugger Ready`, or you want an audit of code nobody filed bugs against.
+
+Runs the audit via `/adversarial-loop` (`harden` mode) — the orchestrator plus a
+fixed model trio each independently run the pinned loop below, in their own
+isolated worktree branched off the ticket's diff; a bug one participant's pass
+finds and another's doesn't gets surfaced in cross-critique and fixed
+everywhere, then the highest-rated fix set wins.
 
 **Four nets**, stated in full before a single fix:
 
@@ -243,6 +249,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Decide if work can close | `/reviewer` |
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
+| Have several models attempt + cross-examine the same task | `/adversarial-loop` |
 | Stress-test a plan before building | `/grilling`, `/grill-me` |
 | Map work too big to hold in one session | `/wayfinder` |
 | Debug something genuinely hard | `/diagnosing-bugs` |
@@ -274,7 +281,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | `specialist-profiles` | Build and verify the four role agents so maker ≠ checker is structural, not aspirational |
 | `state-driven-pipeline-recovery` | The pipeline is thrashing, or a worker reports success while nothing changed |
 | `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
-| `ticket-implementation-tdd` | The detailed one-ticket TDD loop `/coder` invokes |
+| `ticket-implementation-tdd` | The detailed one-ticket TDD loop each `/adversarial-loop` participant runs inside `/coder` |
 | `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts — where failures are replay and ordering, not logic |
 | `invariant-evidence-review` | Is this invariant actually enforced and measured, or just asserted in a comment? |
 | `codebase-audit` | Audit a whole system: sweep by layer, rank by blast radius, emit tickets |
@@ -297,6 +304,7 @@ The load-bearing rule across all of them: **done is a locked verification comman
 |---|---|
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
 | `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
+| `adversarial-loop` | Same coding task, orchestrator + 3 model/provider subagents in isolated worktrees, rounds of cross-critique until unanimous sign-off or a 6-round cap, every final diff rated side by side — no auto-merge |
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
 | `setup-vskills` | Set this repo up on a new machine |
@@ -315,6 +323,12 @@ wins the blind comparison and its normal verification gate passes. UI work also 
 same-viewport screenshots, responsive states, accessibility, typography, and
 interaction checks. It never replaces the debugger or reviewer for security,
 permissions, payments, migrations, or other high-risk work.
+
+Install only this skill with:
+
+```bash
+npx github:VrajGupta/skills add gauntlet-loop
+```
 
 </details>
 
@@ -385,6 +399,7 @@ reviewer/         judge   — blind verdict → PASS/FAIL → route or escalate
 push-handoff/     verified, explicitly authorized commit/push closeout
 loop-engineer/    closed maker→checker loop runner
 gauntlet-loop/    blind maker→critic loop for one-shot and UI work
+adversarial-loop/ multi-model worktree loop — cross-critique to sign-off, rate, you pick
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
 mattpocock/       mirrored library (github.com/mattpocock/skills)
@@ -404,7 +419,18 @@ The pipeline is serial. Each stage runs as an independent top-level session; a s
 | `/debugger` | GPT-5.6 Luna | Codex | **max** |
 | `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
 
-These are defaults, and a project's own CONTEXT may override them. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
+`/planner`, `/coder`, and `/debugger` each build/harden/plan via `/adversarial-loop`
+in **pipeline operating mode**: the stage's default parent above is the
+orchestrator, plus a **fixed default trio** — the first 3 distinct models, in
+priority order `Kimi K3, GLM 5.2, GPT-5.6 Sol, Grok 4.5, Fable 5, Opus 5,
+Sonnet 5`, excluding the orchestrator's own model — cross-critiqued to
+unanimous sign-off or a 6-round cap, highest-rated result wins automatically
+(no human picks mid-run; every participant's rating lands in the handoff).
+`/reviewer` stays a single blind judge — it is deliberately **not** run through
+`/adversarial-loop`, since the whole point of that stage is one unreviewed-by-
+itself verdict, not a competing panel.
+
+These are defaults, and a project's own CONTEXT may override them — [`VrajGupta/Pi-Setup`](https://github.com/VrajGupta/Pi-Setup) is a working harness that launches these four stages and pins its own model per stage. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
 
 The board item, issue, git artifacts, and handoff bridge the sessions — never chat history. `max` is a reasoning setting, not part of a model name. A headless planner cannot conduct the interactive grill; use a visible session or supply every decision in advance.
 

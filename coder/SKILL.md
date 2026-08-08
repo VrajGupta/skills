@@ -1,7 +1,7 @@
 ---
 name: coder
 version: 1.2.0
-description: Implementation chain and the build stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it test-first against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Reads the planning docs + handoffs + tracker, selects the lowest-numbered open ticket whose Blocked-by chain is satisfied, then runs tdd → self-check → handoff → push-handoff. Use when the user runs /coder, wants to pick up and implement the next ready ticket, or needs to build a ticket that /reviewer bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board itself and drains it one ticket at a time.
+description: Implementation chain and the build stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it via /adversarial-loop (build mode, pipeline operating mode — orchestrator plus a fixed model trio, cross-critiqued to sign-off, highest-rated diff wins) against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Runs adversarial-loop(build) → self-check → handoff → push-handoff. Use when the user runs /coder, wants to pick up and implement the next ready ticket, or needs to build a ticket that /reviewer bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board and drains it one ticket at a time.
 ---
 
 # /coder — Implementation chain (next ticket → TDD → pushed handoff)
@@ -131,15 +131,20 @@ ticket with a **Verification-command**, use that. "Done" is this command passing
 not a judgment call. Set an iteration **budget** (default 5); on exhaustion, stop
 and report the blocking failure rather than thrashing.
 
-5. **`tdd`** — implement the chosen ticket with the red-green loop (reference:
-   `~/.claude/skills/tdd/SKILL.md`). Test at the highest meaningful seam with
-   external dependencies **faked** (follow the project's established testing
-   pattern); avoid testing vendor SDK internals or render details. Satisfy the
-   ticket's acceptance criteria. **Keep the existing test suite green** and the
-   type-check/lint clean. Respect the glossary + ADRs; do not fork or duplicate
-   domain logic — the existing services are the source of truth. **Refactoring is
-   not part of this step** — it's handled by Step 3's `/code-review` pass, so keep
-   this loop to red→green only.
+5. **`/adversarial-loop`** (`build` mode, pipeline operating mode) — implement the
+   chosen ticket through the orchestrator (this stage-parent session) plus its
+   fixed default trio, each independently satisfying the ticket's acceptance
+   criteria test-first (`~/.claude/skills/tdd/SKILL.md` red-green discipline,
+   external dependencies **faked**, no vendor SDK internals or render details)
+   in its own isolated worktree, against the same locked gate above. Relay
+   rounds until unanimous sign-off or the 6-round cap, then auto-pick the
+   highest-rated diff — that diff, merged into this ticket's branch, is the
+   implementation. Respect the glossary + ADRs in every worktree; no
+   participant may fork or duplicate domain logic. **Refactoring is not part
+   of this step** — it's handled by Step 3's `/code-review` pass, so keep
+   every participant's loop to red→green only. Log every participant's rating
+   in the handoff (Step 4), not just the winner's — a bounce three stages
+   later needs to know what the losing attempts got wrong too.
 
 ## Step 3 — Self-check, then hand the ticket down the line
 

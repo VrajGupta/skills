@@ -1,7 +1,7 @@
 ---
 name: debugger
 version: 1.2.0
-description: Debugging and hardening chain — the third fleet stage (planner plan → coder build → debugger debug → reviewer review). Takes a ticket from Debugger Ready, moves it to Debugging, and red-teams what /coder built — attacking weird inputs, failure modes, permission and tenant boundaries, /planner invariants, and test quality, then fixing everything test-first against the ticket's Verification-command before moving it to Review Ready for /reviewer. Runs as the GPT-5.6 Luna Codex stage parent by default, with an optional one-level auditor helper. Also supports sweep mode over a directory to find bugs nobody filed and turn them into tickets. Creates or reuses a personalized auditor agent for the repo. Use when the user runs /debugger, wants agent-written code attacked before it can close, needs a ticket in Debugger Ready hardened, or wants an autonomous audit that finds and fixes bugs. Also use it to harden all issues in Debugger Ready; it discovers the queue from the board and drains it one ticket at a time.
+description: Debugging and hardening chain — the third fleet stage (planner plan → coder build → debugger debug → reviewer review). Takes a ticket from Debugger Ready, moves it to Debugging, and hardens what /coder built via /adversarial-loop (harden mode, pipeline operating mode) — orchestrator plus a fixed model trio each attack weird inputs, failure modes, boundaries, invariants, and test quality in their own worktree, cross-critique to sign-off, highest-rated fix set wins — before moving it to Review Ready. Runs as the GPT-5.6 Luna Codex stage parent by default. Also supports sweep mode over a directory. Creates or reuses a personalized auditor agent whose pins seed every adversarial-loop participant. Use when the user runs /debugger, wants agent-written code attacked before it can close, needs a ticket hardened, or wants an autonomous audit. Also use it to harden all issues in Debugger Ready; it discovers the queue from the board and drains it one ticket at a time.
 ---
 
 # /debugger — Debugging chain (Debugger Ready → attacked → Review Ready)
@@ -136,16 +136,23 @@ don't fake it — run the pinned loop yourself in this session, or hand the four
 to `feature-dev:code-reviewer` with the pins written into its prompt, and say in the
 handoff that the agent was not persisted.
 
-## Step 1 — Audit & fix (four nets)
+## Step 1 — Harden via `/adversarial-loop` (`harden` mode, pipeline operating mode)
 
 In ticket mode, move **that one project item** to **`Debugging`** first — update
 and read back the Project `Status` field — so the board shows it's in flight. Move
 nothing else: if seven tickets sit in `Debugger Ready` and you're
 debugging one, six stay put. A column full of tickets nobody is working destroys the
-only thing an in-flight column is for. Then, when this is the independent top-level
-debugger session, spawn the `debugger-<slug>` auditor through that session's agent tool. If
-this `/debugger` run is itself a native child, execute the pinned loop directly instead
-of spawning a nested auditor. It executes its pinned loop:
+only thing an in-flight column is for.
+
+Then run `/adversarial-loop` (`harden` mode, pipeline operating mode): the
+orchestrator (this stage-parent session) plus its fixed default trio each
+independently execute the `debugger-<slug>` auditor's pinned loop below — same
+pins, same task — in their own isolated worktree, branched off the ticket's
+already-landed diff. If this `/debugger` run is itself a native child, it
+executes the pinned loop directly, as the orchestrator's own attempt, and must
+not spawn a nested auditor of its own.
+
+Every participant's pinned loop:
 1. **Read the CONTEXT / invariant docs first** so the audit is grounded.
 2. **Run the tests** it discovers via its globs; record every red (failing) test.
 3. **Audit for bugs — four nets** (the absorbed auditor is nets 3–4). **State the full
@@ -158,49 +165,49 @@ of spawning a nested auditor. It executes its pinned loop:
    - **weak / uncovered tests** — invariants with no real covering test, and
      tautological / over-mocked tests that assert nothing. A missing test for an
      invariant is itself a bug — the fix is to write it.
-4. **Per bug — frame then fix:** frame it as a `/planner` ticket (name the violated
+4. **Red-team the corners** (the pass `/coder` deliberately didn't run) — what's
+   *latently* wrong, the corners agent-written code fails in, which a green
+   happy-path suite says nothing about. Do **not** re-run the happy path; the
+   suite already covers it, and re-verifying it is how a debugger spends its
+   whole budget confirming what was known.
+   - **Weird inputs** — empty, null, zero, negative, oversized, wrong-type, malformed,
+     duplicate, unicode/emoji, injection-shaped, out-of-range dates, timezone boundaries.
+   - **Failure modes** — exactly the ones the ticket's invariants name: each dependency
+     down, slow, rate-limited, or returning garbage. Confirm the code degrades, retries,
+     or surfaces **as specified** rather than crashing, hanging, or swallowing the error
+     into a fake success. A `try/catch` that logs and continues is usually a broken
+     failure mode wearing the costume of a handled one; code with no timeout doesn't
+     fail, it hangs.
+   - **Sequences & crash-safety** — two calls racing, retry after partial success, the
+     same webhook twice (idempotency), a crash between the write and the publish.
+   - **Permission & boundary edges** — wrong user, missing/expired/forged token, privilege
+     escalation, another tenant's identifier, the trust edges the `/planner` invariants drew.
+     On row-level-security projects, confirm the query runs under the constrained role and
+     not a service client that bypasses the policy.
+5. **Per bug — frame then fix:** frame it as a `/planner` ticket (name the violated
    invariant + write the `Verification-command` gate), record it in the tracker as the
-   audit trail, then fix it **test-first** (`/coder` tdd — red→green only; leave
-   refactoring to Step 2's checker pass) until the gate exits 0.
+   audit trail, then fix it **test-first** (red→green only) until the gate exits 0.
    **Budget 5** attempts per bug; on exhaustion, record it as an unfixed follow-up
    rather than thrashing.
 
-The maker returns the bug list, the fixes (gates green), and every unfixed follow-up.
+Relay rounds until unanimous sign-off or the 6-round cap — this is where the
+loop earns its cost over a single auditor: a bug one participant's pass found
+and another's didn't gets surfaced in critique and fixed in every worktree,
+raising every entrant's floor, not just cross-examining one already-known fix.
+**After each fix, re-run the gate command**, so a corner-fix can't silently
+regress a neighbor. Then auto-pick the highest-rated worktree; its fixes,
+merged onto the ticket's branch, are the hardened result. This is also where
+**refactoring** happens (`/coder` defers it here on purpose, so feature diffs
+stay reviewable): the winning participant fixes the smells it finds —
+mysterious names, duplicated code, feature envy, data clumps, primitive
+obsession, repeated switches, divergent change, speculative generality,
+message chains, middleman.
 
-## Step 2 — Red-team the corners (the pass `/coder` deliberately didn't run)
+Log every participant's bug list, fixes, and rating in the handoff (Step 3),
+not just the winner's — a bounce three stages later needs to know what the
+losing attempts missed too, not only what shipped.
 
-The four nets catch what's already visibly wrong. This pass hunts what's *latently*
-wrong — the corners agent-written code fails in, which a green happy-path suite says
-nothing about. Do **not** re-run the happy path; the suite already covers it, and
-re-verifying it is how a debugger spends its whole budget confirming what was known.
-
-- **Weird inputs** — empty, null, zero, negative, oversized, wrong-type, malformed,
-  duplicate, unicode/emoji, injection-shaped, out-of-range dates, timezone boundaries.
-- **Failure modes** — exactly the ones the ticket's invariants name: each dependency
-  down, slow, rate-limited, or returning garbage. Confirm the code degrades, retries,
-  or surfaces **as specified** rather than crashing, hanging, or swallowing the error
-  into a fake success. A `try/catch` that logs and continues is usually a broken
-  failure mode wearing the costume of a handled one; code with no timeout doesn't
-  fail, it hangs.
-- **Sequences & crash-safety** — two calls racing, retry after partial success, the
-  same webhook twice (idempotency), a crash between the write and the publish.
-- **Permission & boundary edges** — wrong user, missing/expired/forged token, privilege
-  escalation, another tenant's identifier, the trust edges the `/planner` invariants drew.
-  On row-level-security projects, confirm the query runs under the constrained role and
-  not a service client that bypasses the policy.
-
-Then **verify each named invariant actually holds** — don't assume the happy-path tests
-covered it. This is also where **refactoring** happens (`/coder` defers it here on
-purpose, so feature diffs stay reviewable): fix the smells you find — mysterious names,
-duplicated code, feature envy, data clumps, primitive obsession, repeated switches,
-divergent change, speculative generality, message chains, middleman.
-
-Fix everything **test-first** — add the failing case, then the fix. **After each fix,
-re-run the gate command**, so a corner-fix can't silently regress a neighbor. Budget 5
-attempts per defect; on exhaustion, record it as an honest follow-up on the ticket
-rather than thrashing.
-
-## Step 3 — Move the ticket to Review Ready
+## Step 2 — Move the ticket to Review Ready
 
 When the gate is green and the corners are covered, move the project item to
 **`Review Ready`** — update and read back the Project `Status` field — and stop.
@@ -218,7 +225,7 @@ where each landed.
 If a sweep does work several existing tickets, move each into `Debugging` **as you
 reach it** and out again as you finish, never claiming the batch up front.
 
-## Step 4 — Hand off and push (both required)
+## Step 3 — Hand off and push (both required)
 
 1. **`handoff`** — write a handoff doc (the project's usual location + the `$TMPDIR`
    copy): which tests were red, what the four-net audit found, **what the red-team pass
@@ -253,7 +260,8 @@ reach it** and out again as you finish, never claiming the batch up front.
 - **Attack corners, don't re-run the happy path.** The suite already covers it;
   re-verifying it burns the budget that should go to the failure modes.
 - **Compose, don't reinvent.** Frame bugs with `/planner`'s ticket format and fix them
-  with `/coder`'s tdd loop; the existing services / ADRs are the source of truth. The
+  through the same `/adversarial-loop` (`harden` mode) that `/coder` runs in `build`
+  mode; the existing services / ADRs are the source of truth. The
   ticket trail is the audit log, not a second planning system.
 - End with a short summary: whether the agent was created or reused, bugs found (by
   net), **what the red-team pass broke**, bugs fixed, follow-ups, **the ticket you moved

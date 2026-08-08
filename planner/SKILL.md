@@ -1,7 +1,7 @@
 ---
 name: planner
 version: 1.1.0
-description: Planning chain and the first stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), turn it into a spec, break it into dependency-ordered tickets that land on the board in Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → to-spec → to-tickets → handoff → push-handoff in sequence. Use when the user runs /planner, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /reviewer bounced back as unbuildable.
+description: Planning chain and the first stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), then run /adversarial-loop (plan mode, pipeline operating mode) — orchestrator plus a fixed model trio each turn the grilled decisions into a competing spec + ticket breakdown, cross-critiqued to sign-off, highest-rated wins — and publish it to Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → adversarial-loop(plan) → publish → handoff → push-handoff in sequence. Use when the user runs /planner, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /reviewer bounced back as unbuildable.
 ---
 
 # /planner — Planning chain (idea → spec → tickets → pushed handoff)
@@ -132,35 +132,44 @@ call, ask the user rather than silently picking.
    - **Security / permission boundaries** — authz rules, trust edges, what data is
      exposed to whom, and the blast radius if a boundary is crossed.
    This is the "adult in the room" step: without it the plan optimizes for "finish,"
-   not "safe." Carry these invariants forward so `to-spec` and `to-tickets` both honor
-   them and so **`/debugger`'s red-team pass has concrete targets to attack** and so `/reviewer` has something falsifiable to review against.
-3. **`to-spec`** — synthesize the grilled decisions **and the locked invariants** into
-   a spec (do **not** re-interview). The spec must state the invariants as explicit
-   acceptance constraints, not leave them implicit. Publish it to wherever the project
-   keeps specs and publish the ticket to the GitHub Project with its `Status` field
-   set to the exact workflow option.
-4. **`to-tickets`** — break the spec into dependency-ordered vertical tracer-bullet
-   tickets, continuing the project's existing numbering/tracker. Each ticket that
-   touches an invariant must restate the relevant budget/failure-mode/boundary in its
-   acceptance criteria. **Each ticket must also ship a machine-checkable
-   done-condition — a `Verification-command` (e.g. `npm test -- <ticket>.spec &&
-   tsc --noEmit`) that exits 0 exactly when the ticket is complete** — so `/coder`
-   has a concrete gate to loop its maker→checker pass against instead of judging
-   "done" by eye. Quiz the user on the breakdown, then publish each ticket with
-   What-to-build / Acceptance-criteria / **Verification-command** / Blocked-by,
-   then add it to the GitHub Project in **`Planned`** and move it to
-   **`Agent Ready`** if every `Blocked by` ticket is already done. Set the Project
-   `Status` field through `gh project`, then read the item back. A ticket
-   with unsatisfied blockers **stays in `Planned`**; that queue is exactly the set
-   of work that isn't claimable yet, and putting blocked tickets in `Agent Ready`
-   makes `/coder` pick up work it can't finish.
-   **Write acceptance criteria so a blind reviewer can check them.** `/reviewer` judges
-   the diff against this ticket *without* reading the author's handoff or
-   rationale, so each criterion must be checkable from code and tests alone.
-   "Handles errors gracefully" gives the reviewer nothing to verify and guarantees a
-   bounce; "on provider 5xx, retries twice then marks the Brief `failed` with
-   reason `provider_unavailable`" is checkable. One observable behavior per
-   criterion — no compound "and"s that can be half-satisfied and argued about.
+   not "safe." Carry these invariants forward so the `/adversarial-loop` plan step
+   below honors them and so **`/debugger`'s red-team pass has concrete targets to
+   attack** and so `/reviewer` has something falsifiable to review against.
+3. **`/adversarial-loop`** (`plan` mode, pipeline operating mode) — the
+   orchestrator (this stage-parent session) plus its fixed default trio each,
+   independently in their own worktree, turn the grilled decisions **and the
+   locked invariants** into a spec (invariants stated as explicit acceptance
+   constraints, not left implicit) and a dependency-ordered vertical
+   tracer-bullet ticket breakdown, continuing the project's existing
+   numbering/tracker. Do **not** re-interview — this step composes what
+   grilling already decided, it doesn't reopen it. Each invariant-touching
+   ticket restates the relevant budget/failure-mode/boundary in its acceptance
+   criteria. **Each ticket must also ship a machine-checkable done-condition —
+   a `Verification-command`** (e.g. `npm test -- <ticket>.spec && tsc
+   --noEmit`) that exits 0 exactly when the ticket is complete — so `/coder`
+   has a concrete gate to loop its `/adversarial-loop` `build`-mode pass
+   against instead of judging "done" by eye.
+
+   Relay rounds until unanimous sign-off or the 6-round cap, then auto-pick
+   the highest-rated spec + ticket set. Rate on: invariants honored
+   explicitly, dependency order sound, and **acceptance criteria a blind
+   reviewer can check** — `/reviewer` judges a ticket's diff *without* reading
+   the author's handoff or rationale, so each criterion must be checkable from
+   code and tests alone. "Handles errors gracefully" gives the reviewer
+   nothing to verify and guarantees a bounce; "on provider 5xx, retries twice
+   then marks the Brief `failed` with reason `provider_unavailable`" is
+   checkable. One observable behavior per criterion — no compound "and"s that
+   can be half-satisfied and argued about. Log every participant's rating in
+   the handoff (Step 5), not just the winner's.
+4. **Publish** — take the winning worktree's spec and tickets. Quiz the user on
+   the breakdown, then publish each ticket with What-to-build /
+   Acceptance-criteria / **Verification-command** / Blocked-by, then add it to
+   the GitHub Project in **`Planned`** and move it to **`Agent Ready`** if
+   every `Blocked by` ticket is already done. Set the Project `Status` field
+   through `gh project`, then read the item back. A ticket with unsatisfied
+   blockers **stays in `Planned`**; that queue is exactly the set of work that
+   isn't claimable yet, and putting blocked tickets in `Agent Ready` makes
+   `/coder` pick up work it can't finish.
    **On GitHub Projects, publish for real, always** — creating a local ticket file
    is not publishing. Create each GitHub issue, add it to the configured project, set
    its Project `Status` to `Planned` or `Agent Ready` after checking blockers, and
@@ -197,9 +206,11 @@ call, ask the user rather than silently picking.
   invariants**, the tickets reflect the spec, the handoff points at the tickets.
 - **Don't skip the invariants gate.** If the grill couldn't pin down a latency
   budget, failure mode, or security boundary, that's an open decision — resolve it
-  with the user before `to-spec`, don't let the spec paper over it.
+  with the user before Step 3's `/adversarial-loop` plan run, don't let the spec
+  paper over it.
 - Stop and surface to the user if grilling reveals the effort needs a new ADR, or
-  if `to-tickets` granularity isn't approved — don't push half-baked artifacts.
+  if the ticket granularity isn't approved at Step 4 — don't push half-baked
+  artifacts.
 - **Plan for `/coder`'s gated loop.** Every ticket ships a runnable
   `Verification-command` (its machine-checkable done-condition) so `/coder` can
   loop maker→checker against a real gate, not a judgment call. A ticket with no
@@ -207,7 +218,7 @@ call, ask the user rather than silently picking.
 - Defer project-specific conventions (tracker format, repo, labels, doc paths) to
   the sub-skills, which already know them — keep this orchestrator project-agnostic.
 - **Tickets land on the real tracker, not just on disk.** On a GitHub Projects
-  project, `to-tickets` is not complete until every slice exists as a real GitHub
+  project, Step 4's publish is not complete until every slice exists as a real GitHub
   issue, is added to the project, and has a read-back-confirmed Project `Status`,
   with native Blocked-by links where supported; a local
   markdown mirror alone does not count as published. On a local-file-tracker

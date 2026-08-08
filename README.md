@@ -243,6 +243,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Decide if work can close | `/reviewer` |
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
+| Have several models attempt + cross-examine the same task | `/adversarial-loop` |
 | Stress-test a plan before building | `/grilling`, `/grill-me` |
 | Map work too big to hold in one session | `/wayfinder` |
 | Debug something genuinely hard | `/diagnosing-bugs` |
@@ -297,6 +298,7 @@ The load-bearing rule across all of them: **done is a locked verification comman
 |---|---|
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
 | `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
+| `adversarial-loop` | Same coding task, orchestrator + 3 model/provider subagents in isolated worktrees, rounds of cross-critique until unanimous sign-off or a 6-round cap, every final diff rated side by side — no auto-merge |
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
 | `setup-vskills` | Set this repo up on a new machine |
@@ -385,6 +387,7 @@ reviewer/         judge   — blind verdict → PASS/FAIL → route or escalate
 push-handoff/     verified, explicitly authorized commit/push closeout
 loop-engineer/    closed maker→checker loop runner
 gauntlet-loop/    blind maker→critic loop for one-shot and UI work
+adversarial-loop/ multi-model worktree loop — cross-critique to sign-off, rate, you pick
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
 mattpocock/       mirrored library (github.com/mattpocock/skills)
